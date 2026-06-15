@@ -14,10 +14,11 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./mysql.cnf:/etc/mysql/conf.d/custom.cnf
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 400M
 
   redis:
     image: redis:7-alpine
@@ -29,7 +30,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 96M
 
   backend:
     build:
@@ -55,7 +56,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 400M
 
   frontend:
     build:
@@ -70,7 +71,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 64M
+          memory: 48M
 
 volumes:
   mysql_data:
