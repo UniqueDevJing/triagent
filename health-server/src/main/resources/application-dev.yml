@@ -1,10 +1,18 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
   datasource:
     url: jdbc:mysql://localhost:3306/health_management?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
     username: root
     password: hjs200435
   cache:
     type: simple
+
+app:
+  jwt:
+    secret: dev-jwt-secret-key-for-local-development-min-256-bits
 
 logging:
   level:

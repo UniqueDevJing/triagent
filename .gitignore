@@ -35,6 +35,10 @@ logs/
 # Nginx local
 nginx-1.26.2/
 
+# Deploy build artifacts
+deploy/health-server-v3.jar
+deploy/dist/
+
 # Temp
 tmp/
 temp/
