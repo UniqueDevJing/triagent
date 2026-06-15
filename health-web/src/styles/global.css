@@ -1,0 +1,202 @@
+/* 传智健康管理系统 - 全局样式 */
+
+/* CSS 变量 - 设计规范 */
+:root {
+  --primary: #5B8DEF;
+  --primary-light: #7BA8F7;
+  --primary-dark: #3B6FD4;
+  --success: #52C41A;
+  --warning: #FAAD14;
+  --danger: #FF6B6B;
+  --info: #909399;
+  --text-primary: #2c3e50;
+  --text-regular: #606266;
+  --text-secondary: #909399;
+  --border-color: #EBEEF5;
+  --bg-page: #F0F4F8;
+  --bg-card: #FFFFFF;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.1);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 全局重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text-primary);
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+
+/* 卡片通用样式 */
+.page-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
+  transition: box-shadow var(--transition);
+}
+.page-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* 页面标题 */
+.page-header {
+  margin-bottom: 20px;
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* 状态标签增强 */
+.el-tag {
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+/* 按钮增强 */
+.el-button {
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  transition: all var(--transition);
+}
+.el-button--primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border: none;
+}
+.el-button--primary:hover {
+  background: linear-gradient(135deg, var(--primary-light), var(--primary));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(91, 141, 239, 0.35);
+}
+
+/* 表格增强 */
+.el-table {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.el-table th.el-table__cell {
+  background: #F8FAFC;
+  color: var(--text-regular);
+  font-weight: 600;
+}
+
+/* 分页增强 */
+.el-pagination {
+  margin-top: 20px;
+  justify-content: center;
+}
+
+/* 对话框增强 */
+.el-dialog {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.el-dialog__header {
+  background: linear-gradient(135deg, #667eea 0%, #5B8DEF 100%);
+  padding: 18px 24px;
+  margin: 0;
+}
+.el-dialog__title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+.el-dialog__headerbtn .el-dialog__close {
+  color: #fff;
+  font-size: 18px;
+}
+.el-dialog__body {
+  padding: 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* 输入框增强 */
+.el-input__wrapper {
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+.el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--primary-light) inset;
+}
+
+/* 菜单项增强 */
+.el-menu-item {
+  border-radius: 8px;
+  margin: 2px 8px;
+  transition: all var(--transition);
+}
+
+/* 退场动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* 渐入上移 */
+.slide-up-enter-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-up-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* 页面过渡 */
+.page-enter-active {
+  transition: all 0.35s ease-out;
+}
+.page-leave-active {
+  transition: all 0.25s ease-in;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-leave-to {
+  opacity: 0;
+}
