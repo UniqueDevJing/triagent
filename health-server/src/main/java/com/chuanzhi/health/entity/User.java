@@ -42,6 +42,12 @@ public class User {
     @Email(message = "邮箱格式不正确")
     private String email;
 
+    private Long departmentId;
+
+    private String avatar;
+
+    private Integer status; // 0禁用 1启用
+
     @Size(max = 200, message = "地址最长200字符")
     private String address;
 
