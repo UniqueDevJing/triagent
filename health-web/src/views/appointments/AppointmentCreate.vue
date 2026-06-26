@@ -210,8 +210,9 @@ async function handleSubmit() {
     })
     ElMessage.success('预约创建成功')
     router.push('/appointments/list')
-  } catch {
+  } catch (e) {
     submitting.value = false
+    ElMessage.error('创建预约失败: ' + (e.message || '请重试'))
   }
 }
 </script>
