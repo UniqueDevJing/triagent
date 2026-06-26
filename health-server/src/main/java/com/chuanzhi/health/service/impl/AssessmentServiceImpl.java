@@ -87,4 +87,27 @@ public class AssessmentServiceImpl implements AssessmentService {
     public AssessmentRecord getRecordDetail(Long id) {
         return recordMapper.selectById(id);
     }
+
+    @Override
+    public IPage<AssessmentRecord> listRecords(int page, int size, Long memberId, String type) {
+        LambdaQueryWrapper<AssessmentRecord> wrapper = new LambdaQueryWrapper<>();
+        if (memberId != null) {
+            wrapper.eq(AssessmentRecord::getMemberId, memberId);
+        }
+        if (type != null && !type.isEmpty()) {
+            wrapper.eq(AssessmentRecord::getType, type);
+        }
+        wrapper.orderByDesc(AssessmentRecord::getCreatedAt);
+        return recordMapper.selectPage(new Page<>(page, size), wrapper);
+    }
+
+    @Override
+    @Transactional
+    public AssessmentRecord createRecord(AssessmentRecord record) {
+        if (record.getAssessedAt() == null) {
+            record.setAssessedAt(java.time.LocalDateTime.now());
+        }
+        recordMapper.insert(record);
+        return record;
+    }
 }
