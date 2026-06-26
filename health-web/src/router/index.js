@@ -25,10 +25,15 @@ const routes = [
     meta: { title: '用户管理' },
   },
   {
-    path: '/assessment',
-    name: 'Assessment',
-    component: () => import('@/views/Assessment.vue'),
+    path: '/assessments',
+    redirect: '/assessments/indicators',
     meta: { title: '健康评估' },
+    children: [
+      { path: 'indicators', name: 'AssessmentIndicators', component: () => import('@/views/assessments/IndicatorList.vue'), meta: { title: '评估指标' } },
+      { path: 'constitutions', name: 'TcmConstitutions', component: () => import('@/views/assessments/ConstitutionList.vue'), meta: { title: '中医体质' } },
+      { path: 'psychology', name: 'PsychologyAssessments', component: () => import('@/views/assessments/PsychologyList.vue'), meta: { title: '心理评测' } },
+      { path: 'records', name: 'AssessmentRecords', component: () => import('@/views/assessments/AssessmentRecordList.vue'), meta: { title: '评估记录' } },
+    ]
   },
   {
     path: '/health-records',

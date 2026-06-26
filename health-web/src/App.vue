@@ -68,14 +68,18 @@
               </div>
             </template>
           </el-menu-item>
-          <el-menu-item index="/assessment">
+          <el-sub-menu index="/assessments">
             <template #title>
               <div class="menu-item-content">
                 <el-icon :size="18"><DocumentChecked /></el-icon>
                 <span>健康评估</span>
               </div>
             </template>
-          </el-menu-item>
+            <el-menu-item index="/assessments/indicators">评估指标</el-menu-item>
+            <el-menu-item index="/assessments/constitutions">中医体质</el-menu-item>
+            <el-menu-item index="/assessments/psychology">心理评测</el-menu-item>
+            <el-menu-item index="/assessments/records">评估记录</el-menu-item>
+          </el-sub-menu>
           <el-menu-item index="/intervention">
             <template #title>
               <div class="menu-item-content">
