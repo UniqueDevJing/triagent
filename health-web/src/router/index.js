@@ -74,6 +74,17 @@ const routes = [
     ]
   },
   {
+    path: '/appointments',
+    redirect: '/appointments/list',
+    meta: { title: '预约管理' },
+    children: [
+      { path: 'list', name: 'AppointmentList', component: () => import('@/views/appointments/AppointmentList.vue'), meta: { title: '预约列表' } },
+      { path: 'create', name: 'AppointmentCreate', component: () => import('@/views/appointments/AppointmentCreate.vue'), meta: { title: '新增预约' } },
+      { path: 'packages', name: 'PackageList', component: () => import('@/views/appointments/PackageList.vue'), meta: { title: '套餐管理' } },
+      { path: 'exam-items', name: 'ExamItemList', component: () => import('@/views/appointments/ExamItemList.vue'), meta: { title: '检测项管理' } },
+    ]
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue'),
