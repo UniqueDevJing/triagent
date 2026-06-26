@@ -44,6 +44,14 @@
               </div>
             </template>
           </el-menu-item>
+          <el-menu-item index="/appointments/list">
+            <template #title>
+              <div class="menu-item-content">
+                <el-icon :size="18"><Calendar /></el-icon>
+                <span>预约管理</span>
+              </div>
+            </template>
+          </el-menu-item>
           <el-menu-item index="/users">
             <template #title>
               <div class="menu-item-content">
