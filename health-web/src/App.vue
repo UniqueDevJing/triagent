@@ -3,8 +3,10 @@
     <router-view />
   </div>
   <el-container v-else class="app-container">
+    <!-- 移动端遮罩 -->
+    <div v-if="sidebarOpen" class="sidebar-overlay" @click="sidebarOpen = false"></div>
     <!-- 侧边栏 -->
-    <el-aside width="230px" class="sidebar">
+    <el-aside :width="sidebarOpen ? '230px' : '0'" class="sidebar" :class="{ 'sidebar-mobile': sidebarOpen }">
       <div class="logo-area">
         <div class="logo-icon">
           <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -42,6 +44,14 @@
               </div>
             </template>
           </el-menu-item>
+          <el-menu-item index="/health-records">
+            <template #title>
+              <div class="menu-item-content">
+                <el-icon :size="18"><Notebook /></el-icon>
+                <span>健康档案</span>
+              </div>
+            </template>
+          </el-menu-item>
           <el-menu-item index="/assessment">
             <template #title>
               <div class="menu-item-content">
@@ -75,6 +85,23 @@
               </div>
             </template>
           </el-menu-item>
+          <el-sub-menu index="/system" v-if="authStore.role === 'ADMIN'">
+            <template #title>
+              <div class="menu-item-content">
+                <el-icon :size="18"><Setting /></el-icon>
+                <span>系统设置</span>
+              </div>
+            </template>
+            <el-menu-item index="/system/users">
+              <span>用户管理</span>
+            </el-menu-item>
+            <el-menu-item index="/system/roles">
+              <span>角色设置</span>
+            </el-menu-item>
+            <el-menu-item index="/system/departments">
+              <span>科室管理</span>
+            </el-menu-item>
+          </el-sub-menu>
         </el-menu>
       </div>
       <div class="sidebar-footer">
@@ -89,6 +116,9 @@
     <el-container>
       <el-header class="app-header">
         <div class="header-left">
+          <el-button class="hamburger-btn" text @click="sidebarOpen = !sidebarOpen">
+            <el-icon :size="22"><component :is="sidebarOpen ? 'Close' : 'Menu'" /></el-icon>
+          </el-button>
           <div class="breadcrumb">
             <el-icon class="breadcrumb-icon" :size="16"><HomeFilled /></el-icon>
             <span class="breadcrumb-sep">/</span>
@@ -99,9 +129,36 @@
           <div class="header-search">
             <el-icon :size="18" color="#909399"><Search /></el-icon>
           </div>
-          <el-badge :value="3" class="notice-badge" :max="99">
-            <el-icon :size="20" color="#606266"><Bell /></el-icon>
-          </el-badge>
+          <el-popover placement="bottom-end" :width="360" trigger="click" @show="fetchNotifications">
+            <template #reference>
+              <el-badge :value="unreadCount" class="notice-badge" :max="99" :hidden="unreadCount === 0">
+                <el-icon :size="20" color="#606266"><Bell /></el-icon>
+              </el-badge>
+            </template>
+            <div class="notification-panel">
+              <div class="notification-header">
+                <span>通知中心</span>
+                <el-button text size="small" @click="markAllRead" :disabled="unreadCount === 0">全部已读</el-button>
+              </div>
+              <div class="notification-list" v-loading="notifLoading">
+                <div v-if="notifications.length === 0" class="notif-empty">暂无通知</div>
+                <div
+                  v-for="n in notifications.slice(0, 10)"
+                  :key="n.id"
+                  class="notif-item"
+                  :class="{ unread: n.isRead === 0 }"
+                  @click="readNotification(n)"
+                >
+                  <div class="notif-dot" v-if="n.isRead === 0"></div>
+                  <div class="notif-body">
+                    <div class="notif-title">{{ n.title }}</div>
+                    <div class="notif-content">{{ n.content }}</div>
+                    <div class="notif-time">{{ n.createdAt?.slice(0, 16) }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </el-popover>
           <div class="user-info">
             <el-avatar :size="34" icon="UserFilled" class="user-avatar" />
             <div class="user-meta">
@@ -126,15 +183,76 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { SwitchButton } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import { getNotifications, getUnreadCount, markAsRead, markAllRead as markAllReadApi } from '@/api/modules/notifications'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const sidebarOpen = ref(window.innerWidth > 768)
+const unreadCount = ref(0)
+const notifications = ref([])
+const notifLoading = ref(false)
+let notifTimer = null
+
+function onResize() {
+  sidebarOpen.value = window.innerWidth > 768
+}
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+  if (authStore.isLoggedIn) fetchUnreadCount()
+  notifTimer = setInterval(() => {
+    if (authStore.isLoggedIn) fetchUnreadCount()
+  }, 30000)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  if (notifTimer) clearInterval(notifTimer)
+})
+
+async function fetchUnreadCount() {
+  try {
+    const uid = authStore.user?.userId || authStore.user?.id
+    if (!uid) return
+    const res = await getUnreadCount(uid)
+    unreadCount.value = res.data?.count || 0
+  } catch {}
+}
+
+async function fetchNotifications() {
+  notifLoading.value = true
+  try {
+    const uid = authStore.user?.userId || authStore.user?.id
+    if (!uid) return
+    const res = await getNotifications({ userId: uid, page: 1, size: 10 })
+    notifications.value = res.data?.records || []
+  } catch {}
+  notifLoading.value = false
+}
+
+async function readNotification(n) {
+  if (n.isRead === 0) {
+    try {
+      await markAsRead(n.id)
+      n.isRead = 1
+      unreadCount.value = Math.max(0, unreadCount.value - 1)
+    } catch {}
+  }
+}
+
+async function markAllRead() {
+  try {
+    const uid = authStore.user?.userId || authStore.user?.id
+    if (!uid) return
+    await markAllReadApi(uid)
+    notifications.value.forEach(n => n.isRead = 1)
+    unreadCount.value = 0
+  } catch {}
+}
 
 const isLoginPage = computed(() => route.path === '/login' || route.name === 'NotFound')
 const activeMenu = computed(() => route.path)
@@ -353,5 +471,75 @@ function handleLogout() {
 .app-plain {
   width: 100%;
   min-height: 100vh;
+}
+
+/* 汉堡菜单按钮 */
+.hamburger-btn {
+  display: none;
+  margin-right: 12px;
+  padding: 6px;
+}
+.sidebar-overlay {
+  display: none;
+}
+
+/* 通知面板 */
+.notification-panel { max-height: 420px; display: flex; flex-direction: column; }
+.notification-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid #EBEEF5; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
+.notification-list { flex: 1; overflow-y: auto; max-height: 340px; }
+.notif-empty { text-align: center; color: #909399; padding: 32px 0; font-size: 13px; }
+.notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 8px; border-radius: 8px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #F5F7FA; }
+.notif-item:hover { background: #F5F7FA; }
+.notif-item.unread { background: #F0F5FF; }
+.notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #409EFF; margin-top: 6px; flex-shrink: 0; }
+.notif-body { flex: 1; min-width: 0; }
+.notif-title { font-size: 13px; font-weight: 600; color: #303133; margin-bottom: 3px; }
+.notif-content { font-size: 12px; color: #606266; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notif-time { font-size: 11px; color: #C0C4CC; }
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .hamburger-btn {
+    display: flex;
+  }
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1000;
+    transition: width 0.3s ease;
+    border-radius: 0;
+  }
+  .sidebar:not(.sidebar-mobile) {
+    width: 0 !important;
+    overflow: hidden;
+  }
+  .sidebar-mobile {
+    width: 230px !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.3);
+  }
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 999;
+  }
+  .app-header {
+    padding: 0 16px;
+  }
+  .app-main {
+    padding: 16px;
+  }
+  .user-meta {
+    display: none;
+  }
+  .header-right {
+    gap: 12px;
+  }
+  .header-search {
+    display: none;
+  }
 }
 </style>
