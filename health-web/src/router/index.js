@@ -55,6 +55,15 @@ const routes = [
     meta: { title: 'AI 健康助手' },
   },
   {
+    path: '/members',
+    redirect: '/members/list',
+    meta: { title: '会员管理' },
+    children: [
+      { path: 'list', name: 'MemberList', component: () => import('@/views/members/MemberList.vue'), meta: { title: '会员列表' } },
+      { path: ':id', name: 'MemberDetail', component: () => import('@/views/members/MemberDetail.vue'), meta: { title: '会员详情' } },
+    ]
+  },
+  {
     path: '/system',
     redirect: '/system/users',
     meta: { title: '系统设置', role: 'ADMIN' },

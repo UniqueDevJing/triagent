@@ -36,6 +36,14 @@
               </div>
             </template>
           </el-menu-item>
+          <el-menu-item index="/members/list">
+            <template #title>
+              <div class="menu-item-content">
+                <el-icon :size="18"><User /></el-icon>
+                <span>会员管理</span>
+              </div>
+            </template>
+          </el-menu-item>
           <el-menu-item index="/users">
             <template #title>
               <div class="menu-item-content">
