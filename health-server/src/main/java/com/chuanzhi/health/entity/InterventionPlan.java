@@ -23,12 +23,24 @@ public class InterventionPlan {
     @NotBlank(message = "计划目标不能为空")
     private String goal;
 
+    /** 关联会员ID */
+    private Long memberId;
+
+    /** 干预类型：CROWD(群体)/CHRONIC(慢病)/DIET(膳食) */
+    private String type;
+
+    /** 计划描述 */
+    private String description;
+
     @NotNull(message = "开始日期不能为空")
     private LocalDate startDate;
 
     private LocalDate endDate;
 
     private PlanStatus status;
+
+    /** 干预结果（JSON） */
+    private String result;
 
     private String createdBy;
 
