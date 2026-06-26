@@ -91,14 +91,19 @@
             <el-menu-item index="/interventions/diet-logs">膳食日志</el-menu-item>
             <el-menu-item index="/interventions/crowd-programs">人群方案</el-menu-item>
           </el-sub-menu>
-          <el-menu-item index="/knowledge">
+          <el-sub-menu index="/knowledge">
             <template #title>
               <div class="menu-item-content">
                 <el-icon :size="18"><Reading /></el-icon>
                 <span>知识库</span>
               </div>
             </template>
-          </el-menu-item>
+            <el-menu-item index="/knowledge/contents">宣教内容</el-menu-item>
+            <el-menu-item index="/knowledge/words">宣教词</el-menu-item>
+            <el-menu-item index="/knowledge/exercises">运动项目库</el-menu-item>
+            <el-menu-item index="/knowledge/diseases">疾病知识库</el-menu-item>
+            <el-menu-item index="/knowledge/recipes">健康食谱库</el-menu-item>
+          </el-sub-menu>
           <el-menu-item index="/ai-agent">
             <template #title>
               <div class="menu-item-content ai-menu">

@@ -53,9 +53,15 @@ const routes = [
   },
   {
     path: '/knowledge',
-    name: 'Knowledge',
-    component: () => import('@/views/Knowledge.vue'),
+    redirect: '/knowledge/contents',
     meta: { title: '知识库' },
+    children: [
+      { path: 'contents', name: 'EducationContentList', component: () => import('@/views/knowledge/EducationContentList.vue'), meta: { title: '宣教内容' } },
+      { path: 'words', name: 'EducationWordList', component: () => import('@/views/knowledge/EducationWordList.vue'), meta: { title: '宣教词' } },
+      { path: 'exercises', name: 'ExerciseLibraryList', component: () => import('@/views/knowledge/ExerciseLibraryList.vue'), meta: { title: '运动项目库' } },
+      { path: 'diseases', name: 'DiseaseLibraryList', component: () => import('@/views/knowledge/DiseaseLibraryList.vue'), meta: { title: '疾病知识库' } },
+      { path: 'recipes', name: 'HealthRecipeList', component: () => import('@/views/knowledge/HealthRecipeList.vue'), meta: { title: '健康食谱库' } },
+    ]
   },
   {
     path: '/ai-agent',
