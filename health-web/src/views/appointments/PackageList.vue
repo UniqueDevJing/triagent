@@ -236,15 +236,7 @@ async function save() {
 
 async function toggleStatus(row) {
   const newStatus = row.status === 1 ? 0 : 1
-  const payload = {
-    name: row.name,
-    description: row.description || '',
-    price: row.price,
-    icon: row.icon || '',
-    status: newStatus,
-    items: [],
-  }
-  await packageApi.updatePackage(row.id, payload)
+  await packageApi.updatePackage(row.id, { status: newStatus })
   row.status = newStatus
   ElMessage.success(newStatus === 1 ? '已启用' : '已禁用')
 }

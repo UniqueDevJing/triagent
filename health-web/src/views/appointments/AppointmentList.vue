@@ -285,22 +285,25 @@ function clickDay(day) {
   viewMode.value = 'table'
   keyword.value = ''
   statusFilter.value = ''
-  // 筛选当天预约
-  // 用 datePickerFilter 变通：存一个 dateFilter
-  dateFilter.value = day.dateStr
   page.value = 1
   fetchByDate(day.dateStr)
 }
 
-const dateFilter = ref('')
-
 async function fetchByDate(dateStr) {
   loading.value = true
-  const params = { page: page.value, size: size.value, keyword: dateStr }
-  const res = await appointmentApi.getAppointments(params)
-  tableData.value = res.data.records
-  total.value = res.data.total
-  loading.value = false
+  try {
+    // 客户端过滤：加载当月全部预约（size: 500），按日期匹配
+    const res = await appointmentApi.getAppointments({ page: 1, size: 500 })
+    const allRecords = res.data.records || []
+    tableData.value = allRecords.filter(r => r.appointmentDate === dateStr)
+    total.value = tableData.value.length
+  } catch (e) {
+    ElMessage.error('加载预约数据失败')
+    tableData.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
+  }
 }
 
 function statusType(status) {
@@ -323,10 +326,14 @@ async function handleStatusChange(row, newStatus) {
   try {
     await ElMessageBox.confirm(`确认将状态变更为"${label}"？`, '提示', { type: 'warning' })
   } catch { return }
-  await appointmentApi.updateAppointmentStatus(row.id, newStatus)
-  row.status = newStatus
-  ElMessage.success(`已${label}`)
-  fetch()
+  try {
+    await appointmentApi.updateAppointmentStatus(row.id, newStatus)
+    row.status = newStatus
+    ElMessage.success(`已${label}`)
+    fetch()
+  } catch (e) {
+    ElMessage.error('状态更新失败: ' + (e.message || '请重试'))
+  }
 }
 
 async function handleDetailStatusChange(newStatus) {
@@ -334,18 +341,28 @@ async function handleDetailStatusChange(newStatus) {
   try {
     await ElMessageBox.confirm(`确认${label}？`, '提示', { type: 'warning' })
   } catch { return }
-  await appointmentApi.updateAppointmentStatus(detailData.value.id, newStatus)
-  detailData.value.status = newStatus
-  detailVisible.value = false
-  ElMessage.success(`已${label}`)
-  fetch()
+  try {
+    await appointmentApi.updateAppointmentStatus(detailData.value.id, newStatus)
+    detailData.value.status = newStatus
+    detailVisible.value = false
+    ElMessage.success(`已${label}`)
+    fetch()
+  } catch (e) {
+    ElMessage.error('状态更新失败: ' + (e.message || '请重试'))
+  }
 }
 
 async function handleDelete(row) {
-  await ElMessageBox.confirm('确认删除该预约？', '提示', { type: 'warning' })
-  await appointmentApi.deleteAppointment(row.id)
-  ElMessage.success('已删除')
-  fetch()
+  try {
+    await ElMessageBox.confirm('确认删除该预约？', '提示', { type: 'warning' })
+  } catch { return }
+  try {
+    await appointmentApi.deleteAppointment(row.id)
+    ElMessage.success('已删除')
+    fetch()
+  } catch (e) {
+    ElMessage.error('删除失败: ' + (e.message || '请重试'))
+  }
 }
 </script>
 
