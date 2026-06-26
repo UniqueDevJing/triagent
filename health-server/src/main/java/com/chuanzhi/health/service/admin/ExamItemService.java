@@ -6,8 +6,10 @@ import com.chuanzhi.health.common.BusinessException;
 import com.chuanzhi.health.common.PageResult;
 import com.chuanzhi.health.entity.ExamItem;
 import com.chuanzhi.health.entity.ExamItemCategory;
+import com.chuanzhi.health.entity.PackageItem;
 import com.chuanzhi.health.mapper.ExamItemCategoryMapper;
 import com.chuanzhi.health.mapper.ExamItemMapper;
+import com.chuanzhi.health.mapper.PackageItemMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,7 @@ public class ExamItemService {
 
     private final ExamItemCategoryMapper examItemCategoryMapper;
     private final ExamItemMapper examItemMapper;
+    private final PackageItemMapper packageItemMapper;
 
     // ---- Categories ----
 
@@ -88,6 +91,11 @@ public class ExamItemService {
     }
 
     public void deleteItem(Long id) {
+        long refCount = packageItemMapper.selectCount(
+                new LambdaQueryWrapper<PackageItem>().eq(PackageItem::getExamItemId, id));
+        if (refCount > 0) {
+            throw new BusinessException("该检测项被套餐引用，请先删除关联");
+        }
         examItemMapper.deleteById(id);
     }
 }
