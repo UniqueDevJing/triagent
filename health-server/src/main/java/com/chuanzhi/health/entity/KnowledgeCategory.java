@@ -14,6 +14,8 @@ public class KnowledgeCategory {
     @NotBlank(message = "分类名称不能为空")
     private String name;
 
+    private String type;
+    private String description;
     private String icon;
     private Integer sortOrder;
 
