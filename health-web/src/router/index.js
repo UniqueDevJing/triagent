@@ -42,10 +42,14 @@ const routes = [
     meta: { title: '健康档案' },
   },
   {
-    path: '/intervention',
-    name: 'Intervention',
-    component: () => import('@/views/Intervention.vue'),
+    path: '/interventions',
+    redirect: '/interventions/chronic',
     meta: { title: '健康干预' },
+    children: [
+      { path: 'chronic', name: 'ChronicDiseaseList', component: () => import('@/views/interventions/ChronicDiseaseList.vue'), meta: { title: '慢病管理' } },
+      { path: 'diet-logs', name: 'DietLogList', component: () => import('@/views/interventions/DietLogList.vue'), meta: { title: '膳食日志' } },
+      { path: 'crowd-programs', name: 'CrowdProgramList', component: () => import('@/views/interventions/CrowdProgramList.vue'), meta: { title: '人群方案' } },
+    ]
   },
   {
     path: '/knowledge',

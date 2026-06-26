@@ -80,14 +80,17 @@
             <el-menu-item index="/assessments/psychology">心理评测</el-menu-item>
             <el-menu-item index="/assessments/records">评估记录</el-menu-item>
           </el-sub-menu>
-          <el-menu-item index="/intervention">
+          <el-sub-menu index="/interventions">
             <template #title>
               <div class="menu-item-content">
                 <el-icon :size="18"><SetUp /></el-icon>
                 <span>健康干预</span>
               </div>
             </template>
-          </el-menu-item>
+            <el-menu-item index="/interventions/chronic">慢病管理</el-menu-item>
+            <el-menu-item index="/interventions/diet-logs">膳食日志</el-menu-item>
+            <el-menu-item index="/interventions/crowd-programs">人群方案</el-menu-item>
+          </el-sub-menu>
           <el-menu-item index="/knowledge">
             <template #title>
               <div class="menu-item-content">
