@@ -7,9 +7,13 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.chuanzhi.health.ai.AiConfig;
 import com.chuanzhi.health.entity.AiConversation;
+import com.chuanzhi.health.entity.AssessmentRecord;
 import com.chuanzhi.health.entity.HealthRecord;
+import com.chuanzhi.health.entity.User;
 import com.chuanzhi.health.mapper.AiConversationMapper;
+import com.chuanzhi.health.mapper.AssessmentRecordMapper;
 import com.chuanzhi.health.mapper.HealthRecordMapper;
+import com.chuanzhi.health.mapper.UserMapper;
 import com.chuanzhi.health.service.AiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +34,8 @@ public class AiServiceImpl implements AiService {
     private final AiConfig aiConfig;
     private final AiConversationMapper conversationMapper;
     private final HealthRecordMapper healthRecordMapper;
+    private final AssessmentRecordMapper assessmentRecordMapper;
+    private final UserMapper userMapper;
 
     private static final String SYSTEM_HEALTH_ANALYSIS = """
         你是一个专业的老年健康数据分析师。用户会提供体检数据或健康指标描述。
@@ -71,6 +77,12 @@ public class AiServiceImpl implements AiService {
             case "COMPANION" -> systemPrompt = SYSTEM_COMPANION;
             case "BEHAVIOR" -> systemPrompt = SYSTEM_BEHAVIOR;
             default -> systemPrompt = "你是传智健康管理系统的AI助手，名为小智。请用友好专业的态度回答用户的健康相关问题。以JSON格式回复：{\"reply\":\"你的回复\"}";
+        }
+
+        // 注入用户健康档案上下文
+        String healthContext = buildUserHealthContext(userId);
+        if (!healthContext.isEmpty()) {
+            systemPrompt = healthContext + "\n\n" + systemPrompt;
         }
 
         // 加载最近对话历史作为上下文
@@ -132,7 +144,12 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public Map<String, Object> companionChat(Long userId, String message) {
-        String aiResponse = callAiApi(SYSTEM_COMPANION, message);
+        String systemPrompt = SYSTEM_COMPANION;
+        String healthContext = buildUserHealthContext(userId);
+        if (!healthContext.isEmpty()) {
+            systemPrompt = healthContext + "\n\n" + systemPrompt;
+        }
+        String aiResponse = callAiApi(systemPrompt, message);
         return parseAiResponse(aiResponse, "COMPANION");
     }
 
@@ -140,6 +157,75 @@ public class AiServiceImpl implements AiService {
     public Map<String, Object> detectAbnormalBehavior(Long userId, String behaviorDesc) {
         String aiResponse = callAiApi(SYSTEM_BEHAVIOR, behaviorDesc);
         return parseAiResponse(aiResponse, "BEHAVIOR");
+    }
+
+    /**
+     * 构建用户健康档案上下文，让 AI 跨会话"记住"用户健康状况
+     */
+    private String buildUserHealthContext(Long userId) {
+        if (userId == null) return "";
+        try {
+            User user = userMapper.selectById(userId);
+            if (user == null) return "";
+
+            StringBuilder ctx = new StringBuilder();
+            ctx.append("【当前用户健康档案 - 请基于以下信息提供个性化服务】\n");
+            ctx.append("姓名：").append(user.getName() != null ? user.getName() : "未知");
+            if (user.getAge() != null) ctx.append("，年龄：").append(user.getAge()).append("岁");
+            if (user.getGender() != null) {
+                ctx.append("，性别：").append(user.getGender() == 1 ? "男" : user.getGender() == 0 ? "女" : "未知");
+            }
+            if (user.getBloodType() != null) ctx.append("，血型：").append(user.getBloodType());
+            if (user.getHeight() != null) ctx.append("，身高：").append(user.getHeight()).append("cm");
+            if (user.getWeight() != null) ctx.append("，体重：").append(user.getWeight()).append("kg");
+            if (user.getAllergies() != null && !user.getAllergies().isBlank())
+                ctx.append("，过敏史：").append(user.getAllergies());
+            if (user.getMedicalHistory() != null && !user.getMedicalHistory().isBlank())
+                ctx.append("，既往病史：").append(user.getMedicalHistory());
+            ctx.append("\n");
+
+            // 近期体检记录
+            List<HealthRecord> records = healthRecordMapper.selectList(
+                new LambdaQueryWrapper<HealthRecord>()
+                    .eq(HealthRecord::getUserId, userId)
+                    .orderByDesc(HealthRecord::getRecordDate)
+                    .last("LIMIT 5")
+            );
+            if (!records.isEmpty()) {
+                ctx.append("\n【近期体检记录】\n");
+                for (HealthRecord r : records) {
+                    ctx.append("- ").append(r.getRecordDate()).append(" [").append(r.getType()).append("] ");
+                    ctx.append(r.getMetrics() != null ? r.getMetrics() : "");
+                    if (r.getDoctorNotes() != null && !r.getDoctorNotes().isBlank())
+                        ctx.append(" 医嘱：").append(r.getDoctorNotes());
+                    ctx.append("\n");
+                }
+            }
+
+            // 近期评估记录
+            List<AssessmentRecord> assessments = assessmentRecordMapper.selectList(
+                new LambdaQueryWrapper<AssessmentRecord>()
+                    .eq(AssessmentRecord::getUserId, userId)
+                    .orderByDesc(AssessmentRecord::getCreatedAt)
+                    .last("LIMIT 3")
+            );
+            if (!assessments.isEmpty()) {
+                ctx.append("\n【近期评估记录】\n");
+                for (AssessmentRecord a : assessments) {
+                    ctx.append("- 得分：").append(a.getTotalScore())
+                        .append("，风险等级：").append(a.getRiskLevel() != null ? a.getRiskLevel().getLabel() : "未知");
+                    if (a.getReportText() != null && !a.getReportText().isBlank())
+                        ctx.append("，报告：").append(a.getReportText());
+                    ctx.append("\n");
+                }
+            }
+
+            log.info("构建用户{}健康上下文成功, 长度={}", userId, ctx.length());
+            return ctx.toString();
+        } catch (Exception e) {
+            log.warn("构建用户健康上下文失败: {}", e.getMessage());
+            return "";
+        }
     }
 
     /**

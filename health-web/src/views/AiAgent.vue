@@ -159,7 +159,8 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue'
 import { UserFilled, Service } from '@element-plus/icons-vue'
-import request from '@/api/request'
+import { chat, healthAnalysis, medicationReminder, companion, behaviorDetect } from '@/api/modules/ai'
+import { useAuthStore } from '@/stores/auth'
 
 const features = [
   { type: 'CHAT', name: '通用对话', desc: '健康咨询问答', icon: 'ChatDotRound', color: '#409EFF' },
@@ -210,26 +211,30 @@ async function sendMessage() {
   scrollToBottom()
 
   try {
+    const auth = useAuthStore()
+    const userId = auth.user?.userId || auth.user?.id || null
     const featureType = currentFeature.value
     let res
 
     // 根据功能类型调用不同 API
     if (featureType === 'CHAT') {
-      res = await request.post('/ai/chat', {
+      res = await chat({
+        userId,
         sessionId: sessionId.value,
         message: text,
         featureType: 'CHAT',
       })
     } else if (featureType === 'ANALYSIS') {
-      res = await request.post('/ai/health-analysis', { data: text })
+      res = await healthAnalysis(text, userId)
     } else if (featureType === 'MEDICATION') {
-      res = await request.post('/ai/medication-reminder', { medicationInfo: text })
+      res = await medicationReminder(text, userId)
     } else if (featureType === 'COMPANION') {
-      res = await request.post('/ai/companion', { message: text })
+      res = await companion(text, userId)
     } else if (featureType === 'BEHAVIOR') {
-      res = await request.post('/ai/behavior-detect', { behaviorDesc: text })
+      res = await behaviorDetect(text, userId)
     } else {
-      res = await request.post('/ai/chat', {
+      res = await chat({
+        userId,
         sessionId: sessionId.value,
         message: text,
         featureType: featureType,

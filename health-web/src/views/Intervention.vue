@@ -71,7 +71,7 @@
             <p>{{ task.description }}</p>
             <div class="task-footer">
               <el-tag size="small">截止: {{ task.dueDate?.slice(0, 10) }}</el-tag>
-              <el-button size="small" type="success" @click="moveTask(task, 'DONE')">完成</el-button>
+              <el-button size="small" type="success" @click="moveTask(task, 'COMPLETED')">完成</el-button>
             </div>
           </el-card>
         </div>
@@ -97,8 +97,8 @@
       <el-form ref="planFormRef" :model="planForm" :rules="planRules" label-width="100px">
         <el-form-item label="计划标题" prop="title"><el-input v-model="planForm.title" placeholder="请输入计划标题" /></el-form-item>
         <el-form-item label="目标" prop="goal"><el-input v-model="planForm.goal" type="textarea" :rows="3" placeholder="请输入干预目标" /></el-form-item>
-        <el-form-item label="开始日期"><el-date-picker v-model="planForm.startDate" type="date" style="width: 100%" value-format="YYYY-MM-DD HH:mm:ss" /></el-form-item>
-        <el-form-item label="结束日期"><el-date-picker v-model="planForm.endDate" type="date" style="width: 100%" value-format="YYYY-MM-DD HH:mm:ss" /></el-form-item>
+        <el-form-item label="开始日期"><el-date-picker v-model="planForm.startDate" type="date" style="width: 100%" value-format="YYYY-MM-DD" /></el-form-item>
+        <el-form-item label="结束日期"><el-date-picker v-model="planForm.endDate" type="date" style="width: 100%" value-format="YYYY-MM-DD" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="planDialogVisible = false">取消</el-button>
@@ -111,7 +111,7 @@
       <el-form ref="taskFormRef" :model="taskForm" :rules="taskRules" label-width="80px">
         <el-form-item label="任务标题" prop="title"><el-input v-model="taskForm.title" placeholder="请输入任务标题" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="taskForm.description" type="textarea" :rows="2" /></el-form-item>
-        <el-form-item label="截止日期"><el-date-picker v-model="taskForm.dueDate" type="date" style="width: 100%" value-format="YYYY-MM-DD HH:mm:ss" /></el-form-item>
+        <el-form-item label="截止日期"><el-date-picker v-model="taskForm.dueDate" type="date" style="width: 100%" value-format="YYYY-MM-DD" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="taskDialogVisible = false">取消</el-button>
@@ -124,7 +124,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import request from '@/api/request'
+import { useAuthStore } from '@/stores/auth'
+import { getPlans, getPlanTasks, createPlan, updatePlan, createTask, updateTaskStatus } from '@/api/modules/interventions'
+import { useRealtime } from '@/composables/useRealtime'
+import { useFormDraft } from '@/composables/useFormDraft'
 
 const plans = ref([])
 const tasks = ref([])
@@ -150,17 +153,28 @@ const taskRules = {
   title: [{ required: true, message: '请输入任务标题', trigger: 'blur' }],
 }
 
-onMounted(() => { fetchPlans() })
+const { hasDraft: hasPlanDraft, restoreDraft: restorePlanDraft, clearDraft: clearPlanDraft } = useFormDraft('intervention-plan-form', { form: planForm })
+const { hasDraft: hasTaskDraft, restoreDraft: restoreTaskDraft, clearDraft: clearTaskDraft } = useFormDraft('intervention-task-form', { form: taskForm })
+
+onMounted(() => {
+  fetchPlans()
+  useRealtime('interventions', (eventName) => {
+    if (eventName !== 'connected') {
+      fetchPlans()
+      if (selectedPlan.value) selectPlan(selectedPlan.value)
+    }
+  }).connect()
+})
 
 async function fetchPlans() {
   loading.value = true
   try {
-    const res = await request.get('/interventions/plans', { params: { page: 1, size: 50 } })
+    const res = await getPlans({ page: 1, size: 50 })
     plans.value = res.data.records || []
     // 加载所有计划的任务以计算正确的进度条
     if (plans.value.length > 0) {
       const taskResults = await Promise.allSettled(
-        plans.value.map(p => request.get(`/interventions/plans/${p.id}/tasks`))
+        plans.value.map(p => getPlanTasks(p.id))
       )
       taskResults.forEach((result, i) => {
         if (result.status === 'fulfilled') {
@@ -177,7 +191,7 @@ async function selectPlan(plan) {
   selectedPlan.value = plan
   tasksLoading.value = true
   try {
-    const res = await request.get(`/interventions/plans/${plan.id}/tasks`)
+    const res = await getPlanTasks(plan.id)
     const newTasks = Array.isArray(res.data) ? res.data : (res.data?.records || [])
     // 替换该计划的任务，避免重复
     tasks.value = [...tasks.value.filter(t => t.planId !== plan.id), ...newTasks]
@@ -191,15 +205,15 @@ function planTasks(planId) {
 
 const pendingTasks = computed(() => selectedPlan.value ? planTasks(selectedPlan.value.id).filter(t => t.status === 'PENDING') : [])
 const inProgressTasks = computed(() => selectedPlan.value ? planTasks(selectedPlan.value.id).filter(t => t.status === 'IN_PROGRESS') : [])
-const doneTasks = computed(() => selectedPlan.value ? planTasks(selectedPlan.value.id).filter(t => t.status === 'DONE') : [])
+const doneTasks = computed(() => selectedPlan.value ? planTasks(selectedPlan.value.id).filter(t => t.status === 'COMPLETED') : [])
 
 function planProgress(planId) {
   const all = planTasks(planId)
   if (all.length === 0) return 0
-  return Math.round((all.filter(t => t.status === 'DONE').length / all.length) * 100)
+  return Math.round((all.filter(t => t.status === 'COMPLETED').length / all.length) * 100)
 }
 
-function showPlanDialog(plan) {
+async function showPlanDialog(plan) {
   if (plan) {
     editPlanId.value = plan.id
     planForm.title = plan.title || ''
@@ -208,6 +222,18 @@ function showPlanDialog(plan) {
     planForm.endDate = plan.endDate || ''
   } else {
     editPlanId.value = null
+    if (hasPlanDraft.value) {
+      try {
+        await ElMessageBox.confirm('检测到未保存的草稿，是否恢复？', '提示', {
+          confirmButtonText: '恢复草稿',
+          cancelButtonText: '重新填写',
+          type: 'info',
+        })
+        restorePlanDraft()
+        planDialogVisible.value = true
+        return
+      } catch {}
+    }
     Object.keys(planForm).forEach(k => planForm[k] = '')
   }
   planDialogVisible.value = true
@@ -218,10 +244,17 @@ async function savePlan() {
   if (!valid) return
   saving.value = true
   try {
+    const auth = useAuthStore()
+    const payload = {
+      ...planForm,
+      userId: auth.user?.userId || auth.user?.id || 1,
+      createdBy: '管理员',
+    }
     if (editPlanId.value) {
-      await request.put(`/interventions/plans/${editPlanId.value}`, planForm)
+      await updatePlan(editPlanId.value, payload)
     } else {
-      await request.post('/interventions/plans', { ...planForm, createdBy: '管理员' })
+      await createPlan(payload)
+      clearPlanDraft()
     }
     ElMessage.success('保存成功')
     planDialogVisible.value = false
@@ -230,7 +263,19 @@ async function savePlan() {
   saving.value = false
 }
 
-function showTaskDialog() {
+async function showTaskDialog() {
+  if (hasTaskDraft.value) {
+    try {
+      await ElMessageBox.confirm('检测到未保存的草稿，是否恢复？', '提示', {
+        confirmButtonText: '恢复草稿',
+        cancelButtonText: '重新填写',
+        type: 'info',
+      })
+      restoreTaskDraft()
+      taskDialogVisible.value = true
+      return
+    } catch {}
+  }
   Object.keys(taskForm).forEach(k => taskForm[k] = '')
   taskDialogVisible.value = true
 }
@@ -240,10 +285,11 @@ async function saveTask() {
   if (!valid) return
   taskSaving.value = true
   try {
-    await request.post('/interventions/tasks', {
+    await createTask({
       ...taskForm,
       planId: selectedPlan.value.id,
     })
+    clearTaskDraft()
     ElMessage.success('任务添加成功')
     taskDialogVisible.value = false
     selectPlan(selectedPlan.value)
@@ -253,7 +299,7 @@ async function saveTask() {
 
 async function moveTask(task, newStatus) {
   try {
-    await request.put(`/interventions/tasks/${task.id}/status`, null, { params: { status: newStatus } })
+    await updateTaskStatus(task.id, newStatus)
     task.status = newStatus
     if (newStatus === 'DONE') task.completedAt = new Date().toISOString()
     ElMessage.success('任务状态已更新')

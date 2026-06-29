@@ -13,4 +13,10 @@ public interface AssessmentService {
     AssessmentRecord submitAssessment(AssessmentRequest request);
     IPage<AssessmentRecord> pageRecords(int page, int size, Long userId);
     AssessmentRecord getRecordDetail(Long id);
+
+    // 管理员端：分页查询评估记录
+    IPage<AssessmentRecord> listRecords(int page, int size, Long memberId, String type);
+
+    // 管理员端：创建评估记录
+    AssessmentRecord createRecord(AssessmentRecord record);
 }
