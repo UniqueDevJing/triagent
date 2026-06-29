@@ -60,6 +60,16 @@
                 <artifactId>health-framework</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.health</groupId>
+                <artifactId>health-generator</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.health</groupId>
+                <artifactId>health-quartz</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- MyBatis-Plus -->
             <dependency>
