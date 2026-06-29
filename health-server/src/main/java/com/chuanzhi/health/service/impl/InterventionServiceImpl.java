@@ -29,7 +29,7 @@ public class InterventionServiceImpl implements InterventionService {
     public IPage<InterventionPlan> pagePlans(int page, int size, String status) {
         LambdaQueryWrapper<InterventionPlan> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(status)) {
-            wrapper.eq(InterventionPlan::getStatus, PlanStatus.valueOf(status));
+            wrapper.eq(InterventionPlan::getStatus, PlanStatus.fromValue(status));
         }
         wrapper.orderByDesc(InterventionPlan::getCreatedAt);
         return planMapper.selectPage(new Page<>(page, size), wrapper);
@@ -68,7 +68,7 @@ public class InterventionServiceImpl implements InterventionService {
     public InterventionTask updateTaskStatus(Long taskId, String status) {
         InterventionTask task = taskMapper.selectById(taskId);
         if (task != null) {
-            TaskStatus taskStatus = TaskStatus.valueOf(status);
+            TaskStatus taskStatus = TaskStatus.fromValue(status);
             task.setStatus(taskStatus);
             if (taskStatus == TaskStatus.COMPLETED) {
                 task.setCompletedAt(LocalDateTime.now());

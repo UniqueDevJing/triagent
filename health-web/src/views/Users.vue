@@ -102,28 +102,77 @@
     </el-dialog>
 
     <!-- 健康档案弹窗 -->
-    <el-dialog v-model="detailVisible" title="健康档案" width="500px">
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="姓名">{{ currentUser?.name }}</el-descriptions-item>
-        <el-descriptions-item label="年龄">{{ currentUser?.age }} 岁</el-descriptions-item>
-        <el-descriptions-item label="血型">{{ currentUser?.bloodType }}</el-descriptions-item>
-        <el-descriptions-item label="身高">{{ currentUser?.height }} cm</el-descriptions-item>
-        <el-descriptions-item label="体重">{{ currentUser?.weight }} kg</el-descriptions-item>
-        <el-descriptions-item label="BMI">
-          {{ calcBMI(currentUser?.height, currentUser?.weight) }}
-        </el-descriptions-item>
-        <el-descriptions-item label="过敏史">{{ currentUser?.allergies || '无' }}</el-descriptions-item>
-        <el-descriptions-item label="既往病史">{{ currentUser?.medicalHistory || '无' }}</el-descriptions-item>
-      </el-descriptions>
+    <el-dialog v-model="detailVisible" title="健康档案" width="700px" @opened="fetchUserHealthData">
+      <el-row :gutter="20">
+        <el-col :span="11">
+          <h4 class="section-title">基本信息</h4>
+          <el-descriptions :column="1" border size="small">
+            <el-descriptions-item label="姓名">{{ currentUser?.name }}</el-descriptions-item>
+            <el-descriptions-item label="年龄">{{ currentUser?.age }} 岁</el-descriptions-item>
+            <el-descriptions-item label="血型">{{ currentUser?.bloodType }}</el-descriptions-item>
+            <el-descriptions-item label="身高">{{ currentUser?.height }} cm</el-descriptions-item>
+            <el-descriptions-item label="体重">{{ currentUser?.weight }} kg</el-descriptions-item>
+            <el-descriptions-item label="BMI">
+              <el-tag :type="bmiTag">{{ calcBMI(currentUser?.height, currentUser?.weight) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="过敏史">{{ currentUser?.allergies || '无' }}</el-descriptions-item>
+            <el-descriptions-item label="既往病史">{{ currentUser?.medicalHistory || '无' }}</el-descriptions-item>
+          </el-descriptions>
+        </el-col>
+        <el-col :span="13">
+          <h4 class="section-title">最新指标</h4>
+          <el-descriptions v-if="latestMetrics && Object.keys(latestMetrics).length" :column="2" border size="small">
+            <el-descriptions-item v-for="(v, k) in latestMetrics" :key="k" :label="k">
+              {{ v }}
+            </el-descriptions-item>
+          </el-descriptions>
+          <el-empty v-else description="暂无健康指标" :image-size="50" />
+        </el-col>
+      </el-row>
+
+      <el-divider />
+
+      <h4 class="section-title">健康档案历史</h4>
+      <el-table :data="userRecords" stripe size="small" v-loading="recordsLoading" max-height="200">
+        <el-table-column prop="recordDate" label="日期" width="110" />
+        <el-table-column prop="type" label="类型" width="70" />
+        <el-table-column label="指标" min-width="200">
+          <template #default="{ row }">
+            <div class="inline-metrics">
+              <template v-for="(v, k) in parseMetrics(row.metrics)" :key="k">
+                <span class="mini-chip">{{ k }}: {{ v }}</span>
+              </template>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-divider />
+
+      <h4 class="section-title">最近评估</h4>
+      <el-table :data="userAssessments" stripe size="small" v-loading="assessLoading" max-height="200">
+        <el-table-column prop="createdAt" label="时间" width="160" />
+        <el-table-column prop="totalScore" label="得分" width="70" />
+        <el-table-column prop="riskLevel" label="风险" width="80">
+          <template #default="{ row }">
+            <el-tag :type="riskType(row.riskLevel)" size="small">{{ riskLabel(row.riskLevel) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reportText" label="评估报告" show-overflow-tooltip />
+      </el-table>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '@/api/request'
+import { getUsers, createUser, updateUser, deleteUser as deleteUserApi } from '@/api/modules/users'
+import { getHealthRecordsByUser, getLatestHealthRecord } from '@/api/modules/healthRecords'
+import { getRecords as getAssessments } from '@/api/modules/assessments'
 import { calcBMI as formatBMI } from '@/utils/format'
+import { useRealtime } from '@/composables/useRealtime'
+import { useFormDraft } from '@/composables/useFormDraft'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -136,6 +185,11 @@ const dialogVisible = ref(false)
 const detailVisible = ref(false)
 const editId = ref(null)
 const currentUser = ref(null)
+const userRecords = ref([])
+const userAssessments = ref([])
+const latestMetrics = ref(null)
+const recordsLoading = ref(false)
+const assessLoading = ref(false)
 
 const userFormRef = ref(null)
 
@@ -150,12 +204,19 @@ const userRules = {
   email: [{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }],
 }
 
-onMounted(fetchUsers)
+const { hasDraft, restoreDraft, clearDraft } = useFormDraft('user-form', { form })
+
+onMounted(() => {
+  fetchUsers()
+  useRealtime('users', (eventName) => {
+    if (eventName !== 'connected') fetchUsers()
+  }).connect()
+})
 
 async function fetchUsers() {
   loading.value = true
   try {
-    const res = await request.get('/users', { params: { page: page.value, size: size.value, keyword: keyword.value } })
+    const res = await getUsers({ page: page.value, size: size.value, keyword: keyword.value })
     tableData.value = res.data.records
     total.value = res.data.total
   } catch {
@@ -165,8 +226,20 @@ async function fetchUsers() {
   loading.value = false
 }
 
-function showAddDialog() {
+async function showAddDialog() {
   editId.value = null
+  if (hasDraft.value) {
+    try {
+      await ElMessageBox.confirm('检测到未保存的草稿，是否恢复？', '提示', {
+        confirmButtonText: '恢复草稿',
+        cancelButtonText: '重新填写',
+        type: 'info',
+      })
+      restoreDraft()
+      dialogVisible.value = true
+      return
+    } catch {}
+  }
   Object.keys(form).forEach(k => form[k] = null)
   form.gender = 1; form.age = 0
   dialogVisible.value = true
@@ -184,11 +257,12 @@ async function saveUser() {
   if (!valid) return
   try {
     if (editId.value) {
-      await request.put(`/users/${editId.value}`, form)
+      await updateUser(editId.value, form)
       ElMessage.success('更新成功')
     } else {
-      await request.post('/users', form)
+      await createUser(form)
       ElMessage.success('添加成功')
+      clearDraft()
     }
     dialogVisible.value = false
     fetchUsers()
@@ -201,7 +275,7 @@ async function saveUser() {
 async function deleteUser(id) {
   await ElMessageBox.confirm('确认删除该用户？', '提示', { type: 'warning' })
   try {
-    await request.delete(`/users/${id}`)
+    await deleteUserApi(id)
     ElMessage.success('删除成功')
     fetchUsers()
   } catch {
@@ -211,7 +285,38 @@ async function deleteUser(id) {
 
 function viewDetail(row) {
   currentUser.value = row
+  userRecords.value = []
+  userAssessments.value = []
+  latestMetrics.value = null
   detailVisible.value = true
+}
+
+async function fetchUserHealthData() {
+  const uid = currentUser.value?.id
+  if (!uid) return
+  try {
+    const [metricsRes, recordsRes, assessRes] = await Promise.all([
+      getLatestHealthRecord(uid),
+      getHealthRecordsByUser(uid),
+      getAssessments({ userId: uid, page: 1, size: 5 }),
+    ])
+    latestMetrics.value = metricsRes.data || {}
+    userRecords.value = (recordsRes.data || []).slice(0, 10)
+    userAssessments.value = assessRes.data?.records || []
+  } catch { /* backend may be offline */ }
+}
+
+function parseMetrics(metricsStr) {
+  if (!metricsStr) return {}
+  try { return typeof metricsStr === 'string' ? JSON.parse(metricsStr) : metricsStr }
+  catch { return {} }
+}
+
+function riskType(level) {
+  return { LOW: 'success', MEDIUM: 'warning', HIGH: 'danger' }[level] || 'info'
+}
+function riskLabel(level) {
+  return { LOW: '低', MEDIUM: '中', HIGH: '高' }[level] || level
 }
 
 function calcBMI(h, w) {
@@ -219,6 +324,16 @@ function calcBMI(h, w) {
   if (!result) return '-'
   return `${result.value} (${result.label})`
 }
+
+const bmiTag = computed(() => {
+  const result = formatBMI(currentUser.value?.height, currentUser.value?.weight)
+  if (!result) return 'info'
+  const { value } = result
+  if (value < 18.5) return 'danger'
+  if (value < 24) return 'success'
+  if (value < 28) return 'warning'
+  return 'danger'
+})
 
 function mockUsers() {
   return [
@@ -244,4 +359,7 @@ function mockUsers() {
 }
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .toolbar { display: flex; gap: 12px; margin-bottom: 16px; }
+.section-title { color: #303133; font-size: 14px; font-weight: 600; margin: 0 0 10px 0; padding-bottom: 8px; border-bottom: 1px solid #F2F3F5; }
+.inline-metrics { display: flex; flex-wrap: wrap; gap: 3px; }
+.mini-chip { display: inline-block; padding: 1px 6px; background: #F0F5FF; border-radius: 4px; font-size: 11px; color: #3B6FF5; }
 </style>

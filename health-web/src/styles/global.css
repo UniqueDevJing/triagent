@@ -200,3 +200,30 @@ body {
 .page-leave-to {
   opacity: 0;
 }
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .page-card {
+    padding: 16px;
+    border-radius: var(--radius-sm);
+  }
+  .page-title {
+    font-size: 18px;
+  }
+  .page-subtitle {
+    font-size: 13px;
+  }
+  .el-dialog {
+    width: 95% !important;
+    border-radius: 12px;
+  }
+  .el-dialog__body {
+    padding: 16px;
+  }
+  .el-table {
+    font-size: 13px;
+  }
+  .el-pagination {
+    justify-content: flex-start;
+  }
+}

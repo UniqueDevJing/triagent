@@ -10,4 +10,5 @@ public class AiChatRequest {
     private String sessionId;
     @NotBlank(message = "功能类型不能为空")
     private String featureType;
+    private Long userId;
 }

@@ -95,8 +95,10 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import request from '@/api/request'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCategories, getArticles, getArticle, createArticle, updateArticle, deleteArticle } from '@/api/modules/knowledge'
+import { useRealtime } from '@/composables/useRealtime'
+import { useFormDraft } from '@/composables/useFormDraft'
 
 const categories = ref([
   { id: 1, name: '慢病管理', icon: 'Opportunity' },
@@ -127,12 +129,17 @@ const articleRules = {
   title: [{ required: true, message: '请输入文章标题', trigger: 'blur' }],
 }
 
+const { hasDraft, restoreDraft, clearDraft } = useFormDraft('knowledge-article-form', { form: articleForm })
+
 onMounted(async () => {
   try {
-    const res = await request.get('/knowledge/categories')
+    const res = await getCategories()
     if (res.data?.length > 0) categories.value = res.data
   } catch { /* use default categories */ }
   fetchArticles()
+  useRealtime('knowledge', (eventName) => {
+    if (eventName !== 'connected') fetchArticles()
+  }).connect()
 })
 
 async function fetchArticles() {
@@ -141,7 +148,7 @@ async function fetchArticles() {
     const params = { page: page.value, size: size.value }
     if (activeCategory.value) params.categoryId = Number(activeCategory.value)
     if (searchKeyword.value) params.keyword = searchKeyword.value
-    const res = await request.get('/knowledge/articles', { params })
+    const res = await getArticles(params)
     articles.value = res.data?.records || []
     total.value = res.data?.total || 0
   } catch {
@@ -160,17 +167,29 @@ async function viewArticle(article) {
   currentArticle.value = article
   detailVisible.value = true
   try {
-    const res = await request.get(`/knowledge/articles/${article.id}`)
+    const res = await getArticle(article.id)
     currentArticle.value = res.data
   } catch { /* use cached data */ }
 }
 
-function showArticleDialog(article) {
+async function showArticleDialog(article) {
   if (article) {
     editArticleId.value = article.id
     Object.assign(articleForm, article)
   } else {
     editArticleId.value = null
+    if (hasDraft.value) {
+      try {
+        await ElMessageBox.confirm('检测到未保存的草稿，是否恢复？', '提示', {
+          confirmButtonText: '恢复草稿',
+          cancelButtonText: '重新填写',
+          type: 'info',
+        })
+        restoreDraft()
+        articleDialogVisible.value = true
+        return
+      } catch {}
+    }
     Object.keys(articleForm).forEach(k => articleForm[k] = '')
   }
   articleDialogVisible.value = true
@@ -182,9 +201,10 @@ async function saveArticle() {
   saving.value = true
   try {
     if (editArticleId.value) {
-      await request.put(`/knowledge/articles/${editArticleId.value}`, articleForm)
+      await updateArticle(editArticleId.value, articleForm)
     } else {
-      await request.post('/knowledge/articles', { ...articleForm, viewCount: 0 })
+      await createArticle({ ...articleForm, viewCount: 0 })
+      clearDraft()
     }
     ElMessage.success('保存成功')
     articleDialogVisible.value = false

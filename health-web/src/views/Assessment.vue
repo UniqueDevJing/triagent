@@ -96,8 +96,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import request from '@/api/request'
+import { getTemplates, getRecords, submitAssessment as submitAssessmentApi } from '@/api/modules/assessments'
 import { useAuthStore } from '@/stores/auth'
+import { useRealtime } from '@/composables/useRealtime'
 
 const templates = ref([])
 const records = ref([])
@@ -133,12 +134,15 @@ const presetQuestions = [
 onMounted(() => {
   fetchTemplates()
   fetchRecords()
+  useRealtime('assessments', (eventName) => {
+    if (eventName !== 'connected') fetchRecords()
+  }).connect()
 })
 
 async function fetchTemplates() {
   tplLoading.value = true
   try {
-    const res = await request.get('/assessments/templates')
+    const res = await getTemplates()
     templates.value = res.data || []
   } catch {
     templates.value = [
@@ -153,9 +157,7 @@ async function fetchTemplates() {
 async function fetchRecords() {
   recLoading.value = true
   try {
-    const res = await request.get('/assessments/records', {
-      params: { page: recPage.value, size: recSize.value }
-    })
+    const res = await getRecords({ page: recPage.value, size: recSize.value })
     records.value = res.data?.records || []
     recTotal.value = res.data?.total || 0
   } catch { /* keep existing */ }
@@ -184,7 +186,7 @@ async function submitAssessment() {
   submitting.value = true
   try {
     const auth = useAuthStore()
-    await request.post('/assessments/submit', {
+    await submitAssessmentApi({
       userId: auth.user?.userId || auth.user?.id || 1,
       templateId: currentTemplate.value.id,
       answers: answers.value,
