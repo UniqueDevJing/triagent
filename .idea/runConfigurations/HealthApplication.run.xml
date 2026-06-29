@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="HealthApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="health-admin" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.health.web.HealthApplication" />
+    <option name="VM_PARAMETERS" value="-DDB_PASSWORD=root" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
