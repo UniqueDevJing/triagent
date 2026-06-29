@@ -66,17 +66,24 @@ public class AiController extends BaseController {
             conversationMapper.updateById(conv);
         }
 
-        Flux<String> stream = deepSeekClient.chat(message, history);
+        StringBuilder fullContent = new StringBuilder();
 
-        return stream.map(content -> {
-            AiMessage aiMsg = new AiMessage();
-            aiMsg.setConversationId(conversationId);
-            aiMsg.setRole("assistant");
-            aiMsg.setContent(content);
-            aiMsg.setModel("deepseek-chat");
-            messageMapper.insert(aiMsg);
-            return content;
-        });
+        return deepSeekClient.chat(message, history)
+                .doOnNext(fullContent::append)
+                .doFinally(signalType -> {
+                    AiMessage aiMsg = new AiMessage();
+                    aiMsg.setConversationId(conversationId);
+                    aiMsg.setRole("assistant");
+                    aiMsg.setContent(fullContent.toString());
+                    aiMsg.setModel("deepseek-chat");
+                    messageMapper.insert(aiMsg);
+
+                    if (conv != null) {
+                        conv.setLastMessage(fullContent.toString());
+                        conv.setMessageCount(prevMessages.size() / 2 + 2);
+                        conversationMapper.updateById(conv);
+                    }
+                });
     }
 
     @GetMapping("/conversation")
