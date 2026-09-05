@@ -19,12 +19,6 @@ const routes = [
     meta: { title: '工作台' },
   },
   {
-    path: '/users',
-    name: 'Users',
-    component: () => import('@/views/Users.vue'),
-    meta: { title: '用户管理' },
-  },
-  {
     path: '/assessments',
     redirect: '/assessments/indicators',
     meta: { title: '健康评估' },
@@ -64,10 +58,10 @@ const routes = [
     ]
   },
   {
-    path: '/ai-agent',
-    name: 'AiAgent',
-    component: () => import('@/views/AiAgent.vue'),
-    meta: { title: 'AI 健康助手' },
+    path: '/assistant',
+    name: 'AssistantTriage',
+    component: () => import('@/views/assistant/AssistantChat.vue'),
+    meta: { title: '智能分诊' },
   },
   {
     path: '/members',

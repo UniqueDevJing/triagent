@@ -32,7 +32,7 @@ public class CrowdProgramController extends BaseController {
     @Log(title = "新增人群方案")
     public AjaxResult create(@RequestBody CrowdProgram program) { crowdProgramMapper.insert(program); return success(program); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改人群方案")
     public AjaxResult update(@RequestBody CrowdProgram program) { crowdProgramMapper.updateById(program); return success(); }
 

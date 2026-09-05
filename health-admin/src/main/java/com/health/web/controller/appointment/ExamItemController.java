@@ -32,7 +32,7 @@ public class ExamItemController extends BaseController {
     @Log(title = "新增检查项")
     public AjaxResult create(@RequestBody ExamItem examItem) { examItemMapper.insert(examItem); return success(examItem); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改检查项")
     public AjaxResult update(@RequestBody ExamItem examItem) { examItemMapper.updateById(examItem); return success(); }
 

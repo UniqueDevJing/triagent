@@ -32,7 +32,7 @@ public class TcmController extends BaseController {
     @Log(title = "新增中医体质")
     public AjaxResult create(@RequestBody TcmConstitution tcm) { tcmConstitutionMapper.insert(tcm); return success(tcm); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改中医体质")
     public AjaxResult update(@RequestBody TcmConstitution tcm) { tcmConstitutionMapper.updateById(tcm); return success(); }
 

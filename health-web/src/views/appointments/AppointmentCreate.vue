@@ -60,7 +60,7 @@
           :class="{ active: selectedPackage?.id === pkg.id }"
           @click="selectedPackage = pkg"
         >
-          <div class="pkg-name">{{ pkg.name }}</div>
+          <div class="pkg-name">{{ pkg.packageName }}</div>
           <div class="pkg-desc">{{ pkg.description || '暂无描述' }}</div>
           <div class="pkg-price">{{ formatPrice(pkg.price) }}</div>
         </div>
@@ -86,7 +86,7 @@
         </div>
         <div class="confirm-card">
           <h4>套餐信息</h4>
-          <div class="info-row"><span class="label">套餐：</span>{{ selectedPackage?.name }}</div>
+          <div class="info-row"><span class="label">套餐：</span>{{ selectedPackage?.packageName }}</div>
           <div class="info-row"><span class="label">价格：</span>{{ formatPrice(selectedPackage?.price) }}</div>
           <div class="info-row"><span class="label">描述：</span>{{ selectedPackage?.description || '无' }}</div>
         </div>
@@ -205,8 +205,8 @@ async function handleSubmit() {
       memberId: selectedMember.value.id,
       packageId: selectedPackage.value.id,
       appointmentDate: form.value.date,
-      timeSlot: form.value.timeSlot,
-      notes: form.value.notes || '',
+      appointmentTime: form.value.timeSlot === 'MORNING' ? '09:00' : '14:00',
+      remark: form.value.notes || '',
     })
     ElMessage.success('预约创建成功')
     router.push('/appointments/list')

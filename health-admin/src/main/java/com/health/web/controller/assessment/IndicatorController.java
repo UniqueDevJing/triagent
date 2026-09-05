@@ -32,7 +32,7 @@ public class IndicatorController extends BaseController {
     @Log(title = "新增评估指标")
     public AjaxResult create(@RequestBody AssessmentIndicator indicator) { assessmentIndicatorMapper.insert(indicator); return success(indicator); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改评估指标")
     public AjaxResult update(@RequestBody AssessmentIndicator indicator) { assessmentIndicatorMapper.updateById(indicator); return success(); }
 

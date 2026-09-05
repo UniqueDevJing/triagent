@@ -1,4 +1,4 @@
-/* 传智健康管理系统 - 全局样式 */
+/* 智能医疗系统 - 全局样式 */
 
 /* CSS 变量 - 设计规范 */
 :root {
@@ -13,7 +13,7 @@
   --text-regular: #606266;
   --text-secondary: #909399;
   --border-color: #EBEEF5;
-  --bg-page: #F0F4F8;
+  --bg-page: #F3F6FB;
   --bg-card: #FFFFFF;
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
@@ -119,6 +119,60 @@ body {
   color: var(--text-regular);
   font-weight: 600;
 }
+.el-table .el-table__body tr {
+  transition: background 0.2s ease;
+}
+.el-table .el-table__body tr:hover > td {
+  background: #F5F7FE;
+}
+
+/* 统计卡片 */
+.stat-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  cursor: default;
+}
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+.stat-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+.stat-icon-box {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.grad-blue .stat-icon-box { background: linear-gradient(135deg, #667eea, #764ba2); }
+.grad-green .stat-icon-box { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+.grad-orange .stat-icon-box { background: linear-gradient(135deg, #f6d365, #fda085); }
+.grad-purple .stat-icon-box { background: linear-gradient(135deg, #f093fb, #f5576c); }
+
+.stat-label { font-size: 13px; color: #909399; margin-bottom: 4px; }
+.stat-value { display: flex; align-items: baseline; gap: 4px; }
+.count-up { font-size: 28px; font-weight: 700; color: #1a1a2e; line-height: 1.2; }
+.stat-unit { font-size: 13px; color: #909399; }
+.stat-trend { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #909399; margin-top: 4px; }
+.stat-card-bg {
+  position: absolute;
+  right: -10px; bottom: -16px;
+  z-index: 0;
+  opacity: 0.6;
+}
 
 /* 分页增强 */
 .el-pagination {
@@ -132,18 +186,22 @@ body {
   overflow: hidden;
 }
 .el-dialog__header {
-  background: linear-gradient(135deg, #667eea 0%, #5B8DEF 100%);
+  background: linear-gradient(135deg, #F8FAFC, #EEF2FF);
   padding: 18px 24px;
   margin: 0;
+  border-bottom: 1px solid #EBEEF5;
 }
 .el-dialog__title {
-  color: #fff;
+  color: #1a1a2e;
   font-size: 16px;
   font-weight: 600;
 }
 .el-dialog__headerbtn .el-dialog__close {
-  color: #fff;
+  color: #909399;
   font-size: 18px;
+}
+.el-dialog__headerbtn .el-dialog__close:hover {
+  color: #303133;
 }
 .el-dialog__body {
   padding: 24px;
@@ -226,4 +284,68 @@ body {
   .el-pagination {
     justify-content: flex-start;
   }
+}
+
+/* ============================================================
+   Native UX polish —— 纯 CSS 体验增强（2026-09）
+   ============================================================ */
+
+/* 细滚动条（WebKit + Firefox） */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(91, 141, 239, 0.35);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(91, 141, 239, 0.6); }
+* { scrollbar-width: thin; scrollbar-color: rgba(91, 141, 239, 0.4) transparent; }
+
+/* 选择色与键盘焦点可见性（无障碍） */
+::selection { background: rgba(91, 141, 239, 0.25); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+
+/* 字体渲染与过渡平滑 */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+body {
+  transition: background-color 0.3s ease;
+}
+
+/* 卡片类微交互：轻量上浮 + 柔和阴影（只在鼠标可用时启用） */
+@media (hover: hover) {
+  .el-card, .card, .stat-card {
+    transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+  }
+  .el-card:hover, .card:hover, .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* 进入动效（尊重系统减弱动效偏好） */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.el-card, .page-container > * {
+  animation: fadeUp 0.4s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 更精致的占位/空态图片 */
+img { max-width: 100%; }
+
+/* Element 弹层默认圆角/阴影微调 */
+.el-dialog, .el-message-box {
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }

@@ -28,6 +28,15 @@
 
     <!-- 表格视图 -->
     <template v-if="viewMode === 'table'">
+      <EmptyState
+        v-if="tableData.length === 0 && !loading"
+        title="暂无预约记录"
+        description="为会员安排体检预约，开启健康评估流程"
+        icon="Calendar"
+        action-text="新建预约"
+        @action="$router.push('/appointments/create')"
+      />
+      <template v-else>
       <el-table :data="tableData" v-loading="loading" stripe @row-click="openDetail">
         <el-table-column prop="memberName" label="会员姓名" width="120" />
         <el-table-column prop="packageName" label="套餐名称" show-overflow-tooltip />
@@ -70,6 +79,7 @@
         v-model:current-page="page" :total="total" :page-size="size"
         @current-change="fetch" layout="prev,pager,next" style="margin-top: 16px"
       />
+      </template>
     </template>
 
     <!-- 日历视图 -->
@@ -159,6 +169,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as appointmentApi from '@/api/modules/appointments'
+import EmptyState from '@/components/EmptyState.vue'
 import dayjs from 'dayjs'
 
 const viewMode = ref('table')

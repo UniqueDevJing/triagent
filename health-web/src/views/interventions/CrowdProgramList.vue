@@ -17,9 +17,12 @@
     </div>
 
     <el-table :data="tableData" stripe v-loading="loading">
-      <el-table-column prop="name" label="方案名称" min-width="160" />
-      <el-table-column prop="targetGroup" label="目标人群" min-width="160" show-overflow-tooltip />
-      <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+      <template #empty>
+        <EmptyState title="暂无人群方案" description="针对不同人群制定健康干预方案，实现精准管理" icon="Share" action-text="新增方案" @action="openDialog()" />
+      </template>
+      <el-table-column prop="programName" label="方案名称" min-width="160" />
+      <el-table-column prop="targetCrowd" label="目标人群" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="programContent" label="方案内容" min-width="200" show-overflow-tooltip />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
           <el-switch
@@ -50,16 +53,13 @@
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑方案' : '新增方案'" width="560px">
       <el-form :model="form" label-width="100px">
         <el-form-item label="方案名称">
-          <el-input v-model="form.name" placeholder="请输入方案名称" />
+          <el-input v-model="form.programName" placeholder="请输入方案名称" />
         </el-form-item>
         <el-form-item label="目标人群">
-          <el-input v-model="form.targetGroup" type="textarea" :rows="3" placeholder='JSON 格式，例如：["老年人","高血压患者"]' />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入方案描述" />
+          <el-input v-model="form.targetCrowd" type="textarea" :rows="3" placeholder="例如：老年人、高血压患者" />
         </el-form-item>
         <el-form-item label="方案内容">
-          <el-input v-model="form.content" type="textarea" :rows="5" placeholder='JSON 格式，例如：{"type":"exercise","detail":"每周运动3次"}' />
+          <el-input v-model="form.programContent" type="textarea" :rows="5" placeholder="请输入方案内容" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -74,6 +74,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as api from '@/api/modules/interventionAdmin'
+import EmptyState from '@/components/EmptyState.vue'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -105,7 +106,7 @@ function handleSearch() {
 }
 
 function openDialog(row) {
-  form.value = row ? { ...row } : { name: '', targetGroup: '', description: '', content: '' }
+  form.value = row ? { ...row } : { programName: '', targetCrowd: '', programContent: '' }
   dialogVisible.value = true
 }
 

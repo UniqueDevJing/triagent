@@ -4,8 +4,6 @@ COPY pom.xml .
 COPY health-common health-common
 COPY health-system health-system
 COPY health-framework health-framework
-COPY health-generator health-generator
-COPY health-quartz health-quartz
 COPY health-admin health-admin
 RUN mvn clean package -pl health-admin -am -DskipTests
 

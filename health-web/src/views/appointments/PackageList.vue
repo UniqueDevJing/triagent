@@ -14,6 +14,9 @@
     </div>
 
     <el-table :data="tableData" v-loading="loading" stripe row-key="id" @expand-change="handleExpand">
+      <template #empty>
+        <EmptyState title="暂无套餐" description="创建体检套餐，为会员提供标准化健康检查服务" icon="Collection" action-text="新增套餐" @action="openDialog()" />
+      </template>
       <el-table-column type="expand" width="40">
         <template #default="{ row }">
           <div v-if="row.expandItems" class="expand-items">
@@ -103,6 +106,7 @@ import { ref, watch, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as packageApi from '@/api/modules/packages'
 import * as examApi from '@/api/modules/examItems'
+import EmptyState from '@/components/EmptyState.vue'
 
 const tableData = ref([])
 const loading = ref(false)

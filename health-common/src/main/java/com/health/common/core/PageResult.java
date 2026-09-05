@@ -6,11 +6,11 @@ import java.util.List;
 @Data
 public class PageResult<T> {
     private long total;
-    private List<T> rows;
+    private List<T> records;
 
-    private PageResult(long total, List<T> rows) {
+    private PageResult(long total, List<T> records) {
         this.total = total;
-        this.rows = rows;
+        this.records = records;
     }
 
     public static <T> AjaxResult page(long total, List<T> rows) {

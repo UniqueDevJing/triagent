@@ -4,19 +4,23 @@ server:
 spring:
   application:
     name: health-admin
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/health_management?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true
-    username: root
-    password: ${DB_PASSWORD:root}
-  data:
-    redis:
-      host: localhost
-      port: 6379
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  ai:
+    openai:
+      api-key: ${LLM_API_KEY:}
+      # 注意：Spring AI 会在 base-url 后自行拼接 /v1/chat/completions，
+      # 因此这里必须是根地址（不带 /v1），与 .env 中 LLM_BASE_URL 可能带 /v1 相区分。
+      base-url: ${LLM_BASE_URL_ROOT:https://api.deepseek.com}
+      chat:
+        options:
+          model: ${LLM_MODEL:deepseek-chat}
+          temperature: 0.3
 
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
       id-type: auto
@@ -37,7 +41,6 @@ knife4j:
   setting:
     language: zh_cn
 
-ai:
-  api-key: ${AI_API_KEY:sk-your-key}
-  model: deepseek-chat
-  base-url: https://api.deepseek.com/v1
+health:
+  data-init:
+    enabled: true

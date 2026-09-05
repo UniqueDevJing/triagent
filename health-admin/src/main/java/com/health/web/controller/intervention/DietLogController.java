@@ -32,7 +32,7 @@ public class DietLogController extends BaseController {
     @Log(title = "新增饮食记录")
     public AjaxResult create(@RequestBody DietLog dietLog) { dietLogMapper.insert(dietLog); return success(dietLog); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改饮食记录")
     public AjaxResult update(@RequestBody DietLog dietLog) { dietLogMapper.updateById(dietLog); return success(); }
 

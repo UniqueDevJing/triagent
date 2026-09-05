@@ -16,8 +16,8 @@
           </svg>
         </div>
         <div class="logo-text">
-          <div class="logo-title">传智健康</div>
-          <div class="logo-subtitle">HEALTH MANAGEMENT</div>
+          <div class="logo-title">智能医疗</div>
+          <div class="logo-subtitle">SMART HEALTHCARE</div>
         </div>
       </div>
       <div class="menu-wrapper">
@@ -52,7 +52,7 @@
               </div>
             </template>
           </el-menu-item>
-          <el-menu-item index="/users">
+          <el-menu-item index="/system/users">
             <template #title>
               <div class="menu-item-content">
                 <el-icon :size="18"><User /></el-icon>
@@ -104,12 +104,11 @@
             <el-menu-item index="/knowledge/diseases">疾病知识库</el-menu-item>
             <el-menu-item index="/knowledge/recipes">健康食谱库</el-menu-item>
           </el-sub-menu>
-          <el-menu-item index="/ai-agent">
+          <el-menu-item index="/assistant">
             <template #title>
               <div class="menu-item-content ai-menu">
                 <el-icon :size="18"><ChatDotRound /></el-icon>
-                <span>AI 健康助手</span>
-                <el-tag size="small" effect="dark" class="ai-badge">AI</el-tag>
+                <span>智能分诊</span>
               </div>
             </template>
           </el-menu-item>
@@ -244,9 +243,7 @@ onUnmounted(() => {
 
 async function fetchUnreadCount() {
   try {
-    const uid = authStore.user?.userId || authStore.user?.id
-    if (!uid) return
-    const res = await getUnreadCount(uid)
+    const res = await getUnreadCount()
     unreadCount.value = res.data?.count || 0
   } catch {}
 }
@@ -254,9 +251,7 @@ async function fetchUnreadCount() {
 async function fetchNotifications() {
   notifLoading.value = true
   try {
-    const uid = authStore.user?.userId || authStore.user?.id
-    if (!uid) return
-    const res = await getNotifications({ userId: uid, page: 1, size: 10 })
+    const res = await getNotifications({ page: 1, size: 10 })
     notifications.value = res.data?.records || []
   } catch {}
   notifLoading.value = false
@@ -274,9 +269,7 @@ async function readNotification(n) {
 
 async function markAllRead() {
   try {
-    const uid = authStore.user?.userId || authStore.user?.id
-    if (!uid) return
-    await markAllReadApi(uid)
+    await markAllReadApi()
     notifications.value.forEach(n => n.isRead = 1)
     unreadCount.value = 0
   } catch {}
@@ -296,12 +289,12 @@ function handleLogout() {
 <style>
 /* 侧边栏 */
 .sidebar {
-  background: linear-gradient(180deg, #4B6CF7 0%, #3651D5 60%, #2B45B8 100%);
+  background: linear-gradient(180deg, #5B6FE6 0%, #4A5CD4 40%, #3B4DC8 100%);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   border-radius: 0 20px 20px 0;
-  box-shadow: 4px 0 24px rgba(75, 108, 247, 0.15);
+  box-shadow: 4px 0 30px rgba(75, 100, 220, 0.15);
   position: relative;
 }
 
@@ -378,19 +371,6 @@ function handleLogout() {
 }
 .ai-menu {
   position: relative;
-}
-.ai-badge {
-  position: absolute;
-  right: -4px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: linear-gradient(135deg, #FF6B6B, #EE5A24) !important;
-  border: none;
-  font-size: 10px;
-  padding: 2px 6px;
-  height: 18px;
-  line-height: 14px;
-  border-radius: 9px;
 }
 
 /* 侧边栏底部 */

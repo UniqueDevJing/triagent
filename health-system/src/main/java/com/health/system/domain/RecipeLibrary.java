@@ -14,6 +14,8 @@ public class RecipeLibrary extends BaseEntity {
     private String mealType;
     private String suitableFor;
     private BigDecimal totalCalories;
+    private Integer cookingTime;
+    private String difficulty;
     private String ingredients;
     private String steps;
     private String nutritionInfo;

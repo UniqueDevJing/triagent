@@ -6,19 +6,19 @@
     </div>
     <el-table :data="tableData" v-loading="loading" stripe>
       <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column prop="username" label="用户名" />
-      <el-table-column prop="name" label="姓名" />
+      <el-table-column prop="userName" label="用户名" />
+      <el-table-column prop="nickName" label="姓名" />
       <el-table-column prop="role" label="角色">
         <template #default="{ row }">
-          <el-tag :type="row.role === 'ADMIN' ? 'danger' : row.role === 'DOCTOR' ? 'warning' : 'info'">
-            {{ roleMap[row.role] || row.role }}
+          <el-tag :type="row.role === 'admin' ? 'danger' : row.role === 'doctor' ? 'warning' : 'info'">
+            {{ row.roleName || roleMap[row.role] || row.role }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="phone" label="手机号" />
+      <el-table-column prop="phoneNumber" label="手机号" />
       <el-table-column prop="status" label="状态" width="80">
         <template #default="{ row }">
-          <el-switch :model-value="row.status === 1" @change="toggleStatus(row)" />
+          <el-switch :model-value="row.status === '0'" :loading="row._statusLoading" @change="toggleStatus(row)" />
         </template>
       </el-table-column>
       <el-table-column label="操作" width="220">
@@ -28,20 +28,21 @@
           <el-button text size="small" type="danger" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
+      <template #empty><el-empty description="暂无用户数据" /></template>
     </el-table>
     <el-pagination v-model:current-page="page" :total="total" :page-size="size" @current-change="fetch" layout="prev,pager,next" />
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑用户' : '新增用户'" width="500px">
       <el-form :model="form" label-width="80px">
-        <el-form-item label="用户名" required><el-input v-model="form.username" /></el-form-item>
-        <el-form-item label="姓名" required><el-input v-model="form.name" /></el-form-item>
+        <el-form-item label="用户名" required><el-input v-model="form.userName" /></el-form-item>
+        <el-form-item label="姓名" required><el-input v-model="form.nickName" /></el-form-item>
         <el-form-item v-if="!form.id" label="密码" required><el-input v-model="form.password" type="password" /></el-form-item>
         <el-form-item label="角色"><el-select v-model="form.role"><el-option v-for="r in roles" :key="r.code" :label="r.name" :value="r.code" /></el-select></el-form-item>
-        <el-form-item label="科室"><el-select v-model="form.departmentId"><el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" /></el-select></el-form-item>
-        <el-form-item label="手机号"><el-input v-model="form.phone" /></el-form-item>
+        <el-form-item label="科室"><el-select v-model="form.deptId"><el-option v-for="d in departments" :key="d.id" :label="d.deptName || d.name" :value="d.id" /></el-select></el-form-item>
+        <el-form-item label="手机号"><el-input v-model="form.phoneNumber" /></el-form-item>
         <el-form-item label="邮箱"><el-input v-model="form.email" /></el-form-item>
       </el-form>
-      <template #footer><el-button @click="dialogVisible = false">取消</el-button><el-button type="primary" @click="save">保存</el-button></template>
+      <template #footer><el-button @click="dialogVisible = false">取消</el-button><el-button type="primary" @click="save" :loading="saving">保存</el-button></template>
     </el-dialog>
   </div>
 </template>
@@ -51,8 +52,8 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as sysApi from '@/api/modules/system'
 
-const roleMap = { ADMIN: '管理员', DOCTOR: '医生', NURSE: '护士' }
-const roles = [{ code: 'ADMIN', name: '管理员' }, { code: 'DOCTOR', name: '医生' }, { code: 'NURSE', name: '护士' }]
+const roleMap = { admin: '管理员', doctor: '医生', nurse: '护士' }
+const roles = [{ code: 'admin', name: '管理员' }, { code: 'doctor', name: '医生' }, { code: 'nurse', name: '护士' }]
 const departments = ref([])
 const tableData = ref([])
 const loading = ref(false)
@@ -61,43 +62,54 @@ const size = ref(20)
 const total = ref(0)
 const dialogVisible = ref(false)
 const form = ref({})
+const saving = ref(false)
 
 onMounted(() => { fetch(); loadDepartments() })
 
 async function fetch() {
   loading.value = true
-  const res = await sysApi.getUsers({ page: page.value, size: size.value })
-  tableData.value = res.data.records
-  total.value = res.data.total
+  try {
+    const res = await sysApi.getUsers({ page: page.value, size: size.value })
+    tableData.value = res.data.records; total.value = res.data.total
+  } catch { tableData.value = []; total.value = 0 }
   loading.value = false
 }
 
 async function loadDepartments() {
-  const res = await sysApi.getDepartments({ page: 1, size: 100 })
-  departments.value = res.data.records
+  try {
+    const res = await sysApi.getDepartments({ page: 1, size: 100 })
+    departments.value = res.data.records
+  } catch { departments.value = [] }
 }
 
 function openDialog(row) {
-  form.value = row ? { ...row } : { role: 'NURSE', status: 1 }
+  form.value = row ? { ...row } : { role: 'nurse', status: '0' }
   dialogVisible.value = true
 }
 
 async function save() {
-  if (form.value.id) {
-    await sysApi.updateUser(form.value.id, form.value)
-  } else {
-    await sysApi.createUser(form.value)
-  }
-  dialogVisible.value = false
-  ElMessage.success('保存成功')
-  fetch()
+  saving.value = true
+  try {
+    if (form.value.id) await sysApi.updateUser(form.value.id, form.value)
+    else await sysApi.createUser(form.value)
+    dialogVisible.value = false; ElMessage.success('保存成功'); fetch()
+  } catch (e) { ElMessage.error(e?.message || '保存失败') }
+  saving.value = false
 }
 
 async function toggleStatus(row) {
-  const newStatus = row.status === 1 ? 0 : 1
-  await sysApi.updateUserStatus(row.id, newStatus)
-  row.status = newStatus
-  ElMessage.success(newStatus === 1 ? '已启用' : '已禁用')
+  const oldStatus = row.status
+  const newStatus = row.status === '0' ? '1' : '0'
+  row._statusLoading = true
+  try {
+    await sysApi.updateUserStatus(row.id, newStatus)
+    row.status = newStatus
+    ElMessage.success(newStatus === '0' ? '已启用' : '已禁用')
+  } catch (e) {
+    row.status = oldStatus
+    ElMessage.error(e?.message || '状态切换失败')
+  }
+  row._statusLoading = false
 }
 
 async function handleResetPwd(row) {
@@ -105,9 +117,9 @@ async function handleResetPwd(row) {
 }
 
 async function handleDelete(row) {
-  await ElMessageBox.confirm('确认删除？', '提示', { type: 'warning' })
-  await sysApi.deleteUser(row.id)
-  ElMessage.success('已删除')
-  fetch()
+  try { await ElMessageBox.confirm('确认删除？', '提示', { type: 'warning' }) } catch { return }
+  try {
+    await sysApi.deleteUser(row.id); ElMessage.success('已删除'); fetch()
+  } catch (e) { ElMessage.error(e?.message || '删除失败') }
 }
 </script>

@@ -9,8 +9,8 @@
       <template #header>
         <div class="card-header">
           <div class="header-left">
-            <el-select v-model="filterUserId" placeholder="筛选用户" clearable style="width: 200px;" @change="fetchRecords">
-              <el-option v-for="u in users" :key="u.id" :label="u.name" :value="u.id" />
+            <el-select v-model="filterMemberId" placeholder="筛选会员" clearable style="width: 200px;" @change="fetchRecords">
+              <el-option v-for="m in members" :key="m.id" :label="m.name" :value="m.id" />
             </el-select>
             <el-input v-model="keyword" placeholder="搜索记录..." clearable style="width: 240px; margin-left: 12px;" @keyup.enter="fetchRecords" />
             <el-button type="primary" @click="fetchRecords" style="margin-left: 12px;">查询</el-button>
@@ -22,7 +22,7 @@
       <el-table :data="tableData" stripe v-loading="loading">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="用户" width="90">
-          <template #default="{ row }">{{ getUserName(row.userId) }}</template>
+          <template #default="{ row }">{{ getMemberName(row.memberId) }}</template>
         </el-table-column>
         <el-table-column prop="recordDate" label="记录日期" width="120">
           <template #default="{ row }">{{ fmtDate(row.recordDate) }}</template>
@@ -66,9 +66,9 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="用户" prop="userId">
-              <el-select v-model="form.userId" style="width: 100%" :disabled="!!editId">
-                <el-option v-for="u in users" :key="u.id" :label="u.name" :value="u.id" />
+            <el-form-item label="用户" prop="memberId">
+              <el-select v-model="form.memberId" style="width: 100%" :disabled="!!editId">
+                <el-option v-for="m in members" :key="m.id" :label="m.name" :value="m.id" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -119,20 +119,20 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUsers } from '@/api/modules/users'
+import { getMembers } from '@/api/modules/members'
 import { getHealthRecords, createHealthRecord, updateHealthRecord, deleteHealthRecord } from '@/api/modules/healthRecords'
 import { formatDate } from '@/utils/format'
 import { useRealtime } from '@/composables/useRealtime'
 import { useFormDraft } from '@/composables/useFormDraft'
 
-const users = ref([])
+const members = ref([])
 const tableData = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const page = ref(1)
 const size = ref(10)
 const total = ref(0)
-const filterUserId = ref(null)
+const filterMemberId = ref(null)
 const keyword = ref('')
 
 const dialogVisible = ref(false)
@@ -141,7 +141,7 @@ const editId = ref(null)
 const metricsList = ref([])
 
 const form = reactive({
-  userId: null,
+  memberId: null,
   recordDate: '',
   type: '体检',
   reportUrl: '',
@@ -149,7 +149,7 @@ const form = reactive({
 })
 
 const rules = {
-  userId: [{ required: true, message: '请选择用户', trigger: 'change' }],
+  memberId: [{ required: true, message: '请选择用户', trigger: 'change' }],
   recordDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
   type: [{ required: true, message: '请选择类型', trigger: 'change' }],
 }
@@ -162,17 +162,17 @@ const { hasDraft, restoreDraft, clearDraft } = useFormDraft('health-record-form'
   form, metricsList,
 })
 
-const userMap = computed(() => {
+const memberMap = computed(() => {
   const m = {}
-  users.value.forEach(u => { m[u.id] = u.name })
+  members.value.forEach(u => { m[u.id] = u.name })
   return m
 })
-const getUserName = (uid) => userMap.value[uid] || `用户${uid}`
+const getMemberName = (uid) => memberMap.value[uid] || `用户${uid}`
 
 onMounted(async () => {
   try {
-    const res = await getUsers({ page: 1, size: 100 })
-    users.value = res.data?.records || []
+    const res = await getMembers({ page: 1, size: 100 })
+    members.value = res.data?.records || []
   } catch { /* 无后端时保持空列表 */ }
   fetchRecords()
   useRealtime('health_records', (eventName) => {
@@ -184,7 +184,7 @@ async function fetchRecords() {
   loading.value = true
   try {
     const params = { page: page.value, size: size.value }
-    if (filterUserId.value) params.userId = filterUserId.value
+    if (filterMemberId.value) params.memberId = filterMemberId.value
     const res = await getHealthRecords(params)
     tableData.value = res.data?.records || []
     total.value = res.data?.total || 0
@@ -202,7 +202,7 @@ function parseMetrics(metricsStr) {
 async function showDialog(row) {
   if (row) {
     editId.value = row.id
-    form.userId = row.userId
+    form.memberId = row.memberId
     form.recordDate = row.recordDate
     form.type = row.type
     form.reportUrl = row.reportUrl || ''
@@ -223,7 +223,7 @@ async function showDialog(row) {
         return
       } catch {}
     }
-    form.userId = null
+    form.memberId = null
     form.recordDate = ''
     form.type = '体检'
     form.reportUrl = ''

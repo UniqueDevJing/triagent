@@ -30,7 +30,7 @@ public class SysMenuController extends BaseController {
     @Log(title = "新增菜单")
     public AjaxResult create(@RequestBody SysMenu menu) { menuMapper.insert(menu); return success(menu); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改菜单")
     public AjaxResult update(@RequestBody SysMenu menu) { menuMapper.updateById(menu); return success(); }
 

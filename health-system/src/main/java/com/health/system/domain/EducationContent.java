@@ -10,8 +10,11 @@ import lombok.EqualsAndHashCode;
 @TableName("education_content")
 public class EducationContent extends BaseEntity {
     private String title;
+    private String summary;
     private String content;
     private String contentType;
+    private String author;
+    private Integer viewCount;
     private String targetAudience;
     private Long wordId;
     private String status;

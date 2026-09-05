@@ -8,6 +8,9 @@
       <el-input v-model="keyword" placeholder="搜索术语或定义..." style="width:280px" clearable @change="fetch" />
     </div>
     <el-table :data="tableData" v-loading="loading" stripe>
+      <template #empty>
+        <EmptyState title="暂无宣教词" description="添加医学术语及通俗解释，帮助患者理解健康知识" icon="Reading" action-text="新增宣教词" @action="openDialog()" />
+      </template>
       <el-table-column prop="term" label="术语" width="140" />
       <el-table-column prop="definition" label="定义解释" min-width="250" show-overflow-tooltip />
       <el-table-column prop="category" label="分类" width="100" />
@@ -37,6 +40,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as api from '@/api/modules/knowledgeAdmin'
+import EmptyState from '@/components/EmptyState.vue'
 
 const tableData = ref([])
 const loading = ref(false)

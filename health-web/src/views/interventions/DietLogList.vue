@@ -33,6 +33,9 @@
     </div>
 
     <el-table :data="tableData" stripe v-loading="loading">
+      <template #empty>
+        <EmptyState title="暂无膳食日志" description="记录会员日常饮食，为健康干预提供数据支持" icon="Dish" action-text="新增日志" @action="openDialog()" />
+      </template>
       <el-table-column label="会员" min-width="120">
         <template #default="{ row }">
           {{ getMemberName(row.memberId) }}
@@ -45,13 +48,9 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="foodItems" label="食物" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="calories" label="热量" width="100">
-        <template #default="{ row }">
-          {{ row.calories ? row.calories + ' kcal' : '-' }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="recordedDate" label="日期" width="120" />
+      <el-table-column prop="foodName" label="食物" min-width="200" show-overflow-tooltip />
+      <el-table-column prop="calories" label="热量(kcal)" width="100" />
+      <el-table-column prop="logDate" label="日期" width="120" />
       <el-table-column label="操作" width="120" fixed="right">
         <template #default="{ row }">
           <el-button text size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -97,10 +96,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="日期">
-          <el-date-picker v-model="form.recordedDate" type="date" placeholder="选择日期" style="width:100%" value-format="YYYY-MM-DD" />
+          <el-date-picker v-model="form.logDate" type="date" placeholder="选择日期" style="width:100%" value-format="YYYY-MM-DD" />
         </el-form-item>
         <el-form-item label="食物">
-          <el-input v-model="form.foodItems" type="textarea" :rows="3" placeholder="请输入食物信息，可换行分隔" />
+          <el-input v-model="form.foodName" type="textarea" :rows="3" placeholder="请输入食物信息" />
         </el-form-item>
         <el-form-item label="热量">
           <el-input-number v-model="form.calories" :min="0" :max="99999" style="width:100%" />
@@ -119,6 +118,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as api from '@/api/modules/interventionAdmin'
 import { getMembers } from '@/api/modules/members'
+import EmptyState from '@/components/EmptyState.vue'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -167,7 +167,7 @@ async function fetch() {
   try {
     const params = { page: page.value, size: size.value }
     if (memberFilter.value) params.memberId = memberFilter.value
-    if (dateFilter.value) params.recordedDate = dateFilter.value
+    if (dateFilter.value) params.logDate = dateFilter.value
     const res = await api.getDietLogs(params)
     tableData.value = res.data.records || []
     total.value = res.data.total || 0
@@ -176,7 +176,7 @@ async function fetch() {
 }
 
 function openDialog() {
-  form.value = { memberId: '', mealType: 'BREAKFAST', recordedDate: '', foodItems: '', calories: undefined }
+  form.value = { memberId: '', mealType: 'BREAKFAST', logDate: '', foodName: '', calories: undefined }
   dialogVisible.value = true
 }
 

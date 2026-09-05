@@ -5,32 +5,22 @@
       <el-button type="primary" @click="openDialog()">新增体质</el-button>
     </div>
     <el-table :data="tableData" stripe v-loading="loading">
-      <el-table-column prop="name" label="名称" width="140" />
-      <el-table-column prop="description" label="描述" min-width="180" show-overflow-tooltip />
-      <el-table-column label="特征" min-width="180">
+      <template #empty>
+        <EmptyState title="暂无体质数据" description="记录会员中医体质辨识结果，提供个性化调养建议" icon="Stamp" action-text="新增体质" @action="openDialog()" />
+      </template>
+      <el-table-column prop="constitutionType" label="体质类型" width="140" />
+      <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+      <el-table-column prop="score" label="评分" width="80" />
+      <el-table-column label="调养建议" min-width="200">
         <template #default="{ row }">
-          <span v-if="row.characteristics && row.characteristics.length <= 20">{{ row.characteristics }}</span>
+          <span v-if="row.healthAdvice && row.healthAdvice.length <= 30">{{ row.healthAdvice }}</span>
           <span v-else>
-            {{ row.characteristics ? row.characteristics.slice(0, 20) + '...' : '-' }}
+            {{ row.healthAdvice ? row.healthAdvice.slice(0, 30) + '...' : '-' }}
             <el-popover trigger="click" placement="bottom" :width="360">
               <template #reference>
                 <el-button text size="small" type="primary" style="margin-left:4px">详情</el-button>
               </template>
-              <div style="max-height:300px;overflow-y:auto;white-space:pre-wrap;line-height:1.6">{{ row.characteristics || '暂无' }}</div>
-            </el-popover>
-          </span>
-        </template>
-      </el-table-column>
-      <el-table-column label="调养建议" min-width="180">
-        <template #default="{ row }">
-          <span v-if="row.dietAdvice && row.dietAdvice.length <= 20">{{ row.dietAdvice }}</span>
-          <span v-else>
-            {{ row.dietAdvice ? row.dietAdvice.slice(0, 20) + '...' : '-' }}
-            <el-popover trigger="click" placement="bottom" :width="360">
-              <template #reference>
-                <el-button text size="small" type="primary" style="margin-left:4px">详情</el-button>
-              </template>
-              <div style="max-height:300px;overflow-y:auto;white-space:pre-wrap;line-height:1.6">{{ row.dietAdvice || '暂无' }}</div>
+              <div style="max-height:300px;overflow-y:auto;white-space:pre-wrap;line-height:1.6">{{ row.healthAdvice || '暂无' }}</div>
             </el-popover>
           </span>
         </template>
@@ -54,10 +44,10 @@
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑体质' : '新增体质'" width="600px">
       <el-form :model="form" label-width="90px">
-        <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
+        <el-form-item label="体质类型"><el-input v-model="form.constitutionType" /></el-form-item>
+        <el-form-item label="评分"><el-input-number v-model="form.score" :min="0" :max="100" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="3" /></el-form-item>
-        <el-form-item label="特征"><el-input v-model="form.characteristics" type="textarea" :rows="3" /></el-form-item>
-        <el-form-item label="调养建议"><el-input v-model="form.dietAdvice" type="textarea" :rows="3" /></el-form-item>
+        <el-form-item label="调养建议"><el-input v-model="form.healthAdvice" type="textarea" :rows="3" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -71,6 +61,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as api from '@/api/modules/assessmentAdmin'
+import EmptyState from '@/components/EmptyState.vue'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -93,7 +84,7 @@ async function fetch() {
 }
 
 function openDialog(row) {
-  form.value = row ? { ...row } : { name: '', description: '', characteristics: '', dietAdvice: '' }
+  form.value = row ? { ...row } : { constitutionType: '', description: '', score: undefined, healthAdvice: '' }
   dialogVisible.value = true
 }
 

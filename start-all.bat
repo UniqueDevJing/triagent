@@ -34,10 +34,10 @@ if exist "nginx-1.26.2\nginx.exe" (
     echo   Nginx 未找到，跳过
 )
 
-:: 启动后端
+:: 启动后端（新架构 health-admin）
 echo [4/4] 启动后端服务...
-cd /d "%~dp0\health-server"
-start "Health-Server" cmd /c "mvn spring-boot:run -Dspring-boot.run.profiles=dev"
+cd /d "%~dp0"
+start "Health-Admin" cmd /c "mvn -pl health-admin -am spring-boot:run"
 
 echo.
 echo ========================================

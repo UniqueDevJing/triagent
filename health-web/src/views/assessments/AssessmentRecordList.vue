@@ -20,20 +20,29 @@
           <el-tag :type="typeTagType(row.type)" size="small">{{ typeLabel(row.type) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="score" label="分数" width="80" />
+      <el-table-column prop="totalScore" label="分数" width="80" />
       <el-table-column label="风险等级" width="100">
         <template #default="{ row }">
           <el-tag v-if="row.riskLevel" :type="riskTagType(row.riskLevel)" size="small">{{ row.riskLevel }}</el-tag>
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column prop="assessmentDate" label="评估日期" width="120" />
+      <el-table-column prop="assessDate" label="评估日期" width="120" />
       <el-table-column prop="conclusion" label="结论" min-width="200" show-overflow-tooltip />
       <el-table-column label="操作" width="80" fixed="right">
         <template #default="{ row }">
           <el-button text size="small" type="danger" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
+      <template #empty>
+        <EmptyState
+          title="暂无评估记录"
+          description="完成体检后可为会员生成健康评估报告"
+          icon="DataAnalysis"
+          action-text="发起评估"
+          @action="openDialog()"
+        />
+      </template>
     </el-table>
     <div class="page-pagination">
       <el-pagination
@@ -59,7 +68,7 @@
             <el-option label="心理评测" value="PSYCHOLOGY" />
           </el-select>
         </el-form-item>
-        <el-form-item label="分数"><el-input-number v-model="form.score" :min="0" :max="999" style="width:100%" /></el-form-item>
+        <el-form-item label="分数"><el-input-number v-model="form.totalScore" :min="0" :max="999" style="width:100%" /></el-form-item>
         <el-form-item label="风险等级">
           <el-select v-model="form.riskLevel" clearable style="width:100%">
             <el-option label="低风险" value="低风险" />
@@ -67,7 +76,7 @@
             <el-option label="高风险" value="高风险" />
           </el-select>
         </el-form-item>
-        <el-form-item label="评估日期"><el-date-picker v-model="form.assessmentDate" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item>
+        <el-form-item label="评估日期"><el-date-picker v-model="form.assessDate" type="date" value-format="YYYY-MM-DD" style="width:100%" /></el-form-item>
         <el-form-item label="结论"><el-input v-model="form.conclusion" type="textarea" :rows="3" /></el-form-item>
       </el-form>
       <template #footer>
@@ -83,6 +92,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as api from '@/api/modules/assessmentAdmin'
 import { getMembers } from '@/api/modules/members'
+import EmptyState from '@/components/EmptyState.vue'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -131,7 +141,7 @@ async function searchMember(query) {
 }
 
 function openDialog() {
-  form.value = { memberId: '', type: 'RISK', score: undefined, riskLevel: '', assessmentDate: '', conclusion: '' }
+  form.value = { memberId: '', type: 'RISK', totalScore: undefined, riskLevel: '', assessDate: '', conclusion: '' }
   dialogVisible.value = true
   memberOptions.value = []
 }
@@ -148,8 +158,9 @@ async function save() {
 }
 
 async function handleDelete(row) {
-  await ElMessageBox.confirm('确认删除该记录？', '提示', { type: 'warning' })
-  // 后端暂无删除评估记录的 API，此处提示
-  ElMessage.info('删除功能待后端支持')
+  try { await ElMessageBox.confirm('确认删除该记录？', '提示', { type: 'warning' }) } catch { return }
+  try {
+    await api.deleteAssessmentRecord(row.id); ElMessage.success('已删除'); fetch()
+  } catch (e) { ElMessage.error(e?.message || '删除失败') }
 }
 </script>
