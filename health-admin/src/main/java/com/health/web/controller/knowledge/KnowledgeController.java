@@ -32,7 +32,7 @@ public class KnowledgeController extends BaseController {
     @Log(title = "新增知识文章")
     public AjaxResult create(@RequestBody KnowledgeArticle article) { knowledgeArticleMapper.insert(article); return success(article); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改知识文章")
     public AjaxResult update(@RequestBody KnowledgeArticle article) { knowledgeArticleMapper.updateById(article); return success(); }
 

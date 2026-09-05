@@ -32,7 +32,7 @@ public class ChronicDiseaseController extends BaseController {
     @Log(title = "新增慢性病")
     public AjaxResult create(@RequestBody ChronicDisease disease) { chronicDiseaseMapper.insert(disease); return success(disease); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改慢性病")
     public AjaxResult update(@RequestBody ChronicDisease disease) { chronicDiseaseMapper.updateById(disease); return success(); }
 

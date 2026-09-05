@@ -32,7 +32,7 @@ public class RecipeController extends BaseController {
     @Log(title = "新增食谱")
     public AjaxResult create(@RequestBody RecipeLibrary recipe) { recipeLibraryMapper.insert(recipe); return success(recipe); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改食谱")
     public AjaxResult update(@RequestBody RecipeLibrary recipe) { recipeLibraryMapper.updateById(recipe); return success(); }
 

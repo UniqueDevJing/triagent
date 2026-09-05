@@ -27,6 +27,16 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/coze-api': {
+        target: 'https://api.coze.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/coze-api/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.setHeader('Authorization', `Bearer ${process.env.COZE_PAT || ''}`)
+          })
+        },
+      },
     },
   },
   build: {

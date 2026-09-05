@@ -1,21 +1,17 @@
 import request from '@/api/request'
 
 export function getNotifications(params) {
-  return request.get('/notifications', { params })
+  return request.get('/v1/system/notice', { params })
 }
 
-export function getUnreadCount(userId) {
-  return request.get('/notifications/unread-count', { params: { userId } })
+export function getUnreadCount() {
+  return request.get('/v1/system/notice/unread-count')
 }
 
 export function markAsRead(id) {
-  return request.put(`/notifications/${id}/read`)
+  return request.put(`/v1/system/notice/${id}/read`)
 }
 
-export function markAllRead(userId) {
-  return request.put('/notifications/read-all', { params: { userId } })
-}
-
-export function subscribeNotifications(userId) {
-  return new EventSource(`/api/sse/subscribe/notifications:${userId}`)
+export function markAllRead() {
+  return request.put('/v1/system/notice/read-all')
 }

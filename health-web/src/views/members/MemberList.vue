@@ -18,11 +18,20 @@
     </div>
 
     <el-table :data="tableData" v-loading="loading" stripe>
+      <template #empty>
+        <EmptyState
+          title="暂无会员数据"
+          description="添加会员信息，开始健康管理服务"
+          icon="User"
+          action-text="新增会员"
+          @action="openDialog()"
+        />
+      </template>
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="name" label="姓名" width="100" />
       <el-table-column prop="gender" label="性别" width="60">
         <template #default="{ row }">
-          {{ { 0: '未知', 1: '男', 2: '女' }[row.gender] || '未知' }}
+          {{ { '0': '女', '1': '男' }[row.gender] || '未知' }}
         </template>
       </el-table-column>
       <el-table-column prop="age" label="年龄" width="60" />
@@ -31,13 +40,13 @@
       <el-table-column prop="memberLevel" label="会员等级" width="100">
         <template #default="{ row }">
           <el-tag :type="levelType(row.memberLevel)">
-            {{ levelMap[row.memberLevel] || row.memberLevel }}
+            {{ levelMap[row.memberLevel] || row.memberLevel || '普通会员' }}
           </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="80">
         <template #default="{ row }">
-          <el-switch :model-value="row.status === 1" @change="toggleStatus(row)" />
+          <el-switch :model-value="row.status === 'ACTIVE'" @change="toggleStatus(row)" />
         </template>
       </el-table-column>
       <el-table-column label="操作" width="200">
@@ -68,17 +77,16 @@
           <el-col :span="12">
             <el-form-item label="性别">
               <el-select v-model="form.gender" style="width: 100%">
-                <el-option :value="0" label="未知" />
-                <el-option :value="1" label="男" />
-                <el-option :value="2" label="女" />
+                <el-option :value="'0'" label="女" />
+                <el-option :value="'1'" label="男" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="年龄">
-              <el-input-number v-model="form.age" :min="0" :max="150" style="width: 100%" />
+            <el-form-item label="出生日期">
+              <el-date-picker v-model="form.birthday" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -90,18 +98,9 @@
         <el-form-item label="身份证号">
           <el-input v-model="form.idCard" />
         </el-form-item>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="紧急联系人">
-              <el-input v-model="form.emergencyContact" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="紧急电话">
-              <el-input v-model="form.emergencyPhone" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="地址">
+          <el-input v-model="form.address" />
+        </el-form-item>
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="血型">
@@ -125,11 +124,14 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="既往病史">
-          <el-input v-model="form.medicalHistory" type="textarea" :rows="2" />
+        <el-form-item label="家族病史">
+          <el-input v-model="form.familyHistory" type="textarea" :rows="2" />
         </el-form-item>
         <el-form-item label="过敏史">
-          <el-input v-model="form.allergies" type="textarea" :rows="2" />
+          <el-input v-model="form.allergyHistory" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="form.remark" type="textarea" :rows="2" />
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
@@ -143,7 +145,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="状态">
-              <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
+              <el-switch v-model="form.status" active-value="ACTIVE" inactive-value="INACTIVE" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -161,6 +163,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as memberApi from '@/api/modules/members'
+import EmptyState from '@/components/EmptyState.vue'
 
 const router = useRouter()
 
@@ -183,7 +186,7 @@ onMounted(() => { fetch() })
 async function fetch() {
   loading.value = true
   const params = { page: page.value, size: size.value }
-  if (keyword.value) params.keyword = keyword.value
+  if (keyword.value) params.name = keyword.value
   const res = await memberApi.getMembers(params)
   tableData.value = res.data.records
   total.value = res.data.total
@@ -196,7 +199,7 @@ function handleSearch() {
 }
 
 function openDialog(row) {
-  form.value = row ? { ...row } : { gender: 0, status: 1, memberLevel: 'NORMAL', bloodType: '' }
+  form.value = row ? { ...row } : { gender: '1', status: 'ACTIVE', memberLevel: 'NORMAL', bloodType: '' }
   dialogVisible.value = true
 }
 
@@ -212,10 +215,10 @@ async function save() {
 }
 
 async function toggleStatus(row) {
-  const newStatus = row.status === 1 ? 0 : 1
+  const newStatus = row.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
   await memberApi.updateMember(row.id, { ...row, status: newStatus })
   row.status = newStatus
-  ElMessage.success(newStatus === 1 ? '已启用' : '已禁用')
+  ElMessage.success(newStatus === 'ACTIVE' ? '已启用' : '已禁用')
 }
 
 function handleDetail(row) {

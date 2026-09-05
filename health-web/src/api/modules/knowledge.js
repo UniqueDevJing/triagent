@@ -1,25 +1,21 @@
 import request from '@/api/request'
 
-export function getCategories() {
-  return request.get('/knowledge/categories')
-}
-
 export function getArticles(params) {
-  return request.get('/knowledge/articles', { params })
+  return request.get('/v1/knowledge/article', { params })
 }
 
 export function getArticle(id) {
-  return request.get(`/knowledge/articles/${id}`)
+  return request.get(`/v1/knowledge/article/${id}`)
 }
 
 export function createArticle(data) {
-  return request.post('/knowledge/articles', data)
+  return request.post('/v1/knowledge/article', data)
 }
 
 export function updateArticle(id, data) {
-  return request.put(`/knowledge/articles/${id}`, data)
+  return request.put(`/v1/knowledge/article/${id}`, data)
 }
 
 export function deleteArticle(id) {
-  return request.delete(`/knowledge/articles/${id}`)
+  return request.delete(`/v1/knowledge/article/${id}`)
 }

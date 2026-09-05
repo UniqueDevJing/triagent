@@ -1,25 +1,17 @@
 import request from '@/api/request'
 
 export function getHealthRecords(params) {
-  return request.get('/health-records', { params })
-}
-
-export function getHealthRecordsByUser(userId) {
-  return request.get(`/health-records/user/${userId}`)
-}
-
-export function getLatestHealthRecord(userId) {
-  return request.get(`/health-records/user/${userId}/latest`)
+  return request.get('/v1/member/health-record', { params })
 }
 
 export function createHealthRecord(data) {
-  return request.post('/health-records', data)
+  return request.post('/v1/member/health-record', data)
 }
 
 export function updateHealthRecord(id, data) {
-  return request.put(`/health-records/${id}`, data)
+  return request.put(`/v1/member/health-record/${id}`, data)
 }
 
 export function deleteHealthRecord(id) {
-  return request.delete(`/health-records/${id}`)
+  return request.delete(`/v1/member/health-record/${id}`)
 }

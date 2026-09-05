@@ -32,7 +32,7 @@ public class DiseaseController extends BaseController {
     @Log(title = "新增疾病")
     public AjaxResult create(@RequestBody DiseaseLibrary disease) { diseaseLibraryMapper.insert(disease); return success(disease); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改疾病")
     public AjaxResult update(@RequestBody DiseaseLibrary disease) { diseaseLibraryMapper.updateById(disease); return success(); }
 

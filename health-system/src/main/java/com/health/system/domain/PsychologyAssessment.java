@@ -16,5 +16,6 @@ public class PsychologyAssessment extends BaseEntity {
     private String resultLevel;
     private String analysis;
     private String suggestion;
+    private String questions;
     private LocalDate assessDate;
 }

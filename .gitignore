@@ -7,11 +7,7 @@ target/
 !.mvn/wrapper/maven-wrapper.jar
 
 # IDE
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/usage.statistics.xml
-.idea/dictionaries/
-.idea/shelf/
+.idea/
 *.iml
 .vscode/
 .settings/
@@ -47,3 +43,20 @@ deploy/dist/
 tmp/
 temp/
 *.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 构建产物（前端 dist 由 CI/本地构建生成）
+health-web/dist/
+
+# 本地杂项
+.workbuddy/
+*.bak
+
+# 内部运维/过程文档（不公开）
+CLAUDE.md
+.work/
+项目优化建议报告.md
+docs/superpowers/

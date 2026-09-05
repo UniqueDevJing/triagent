@@ -84,6 +84,8 @@ CREATE TABLE member (
     smoking_status VARCHAR(32),
     drinking_status VARCHAR(32),
     remark VARCHAR(500),
+    status VARCHAR(32) DEFAULT 'ACTIVE',
+    member_level VARCHAR(32) DEFAULT 'NORMAL',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB COMMENT='会员表';
@@ -164,6 +166,7 @@ CREATE TABLE assessment_record (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     member_id BIGINT NOT NULL,
     template_id BIGINT,
+    type VARCHAR(32),
     total_score DECIMAL(8,2),
     risk_level VARCHAR(32),
     conclusion TEXT,
@@ -206,6 +209,7 @@ CREATE TABLE psychology_assessment (
     result_level VARCHAR(64),
     analysis TEXT,
     suggestion TEXT,
+    questions TEXT,
     assess_date DATE,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -246,7 +250,7 @@ CREATE TABLE chronic_disease (
     diagnosis_date VARCHAR(32),
     severity VARCHAR(32),
     medication TEXT,
-    control_status VARCHAR(64),
+    control_status VARCHAR(128),
     remark VARCHAR(500),
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -264,6 +268,18 @@ CREATE TABLE diet_log (
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB COMMENT='膳食日志表';
+
+CREATE TABLE intervention_task (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    plan_id BIGINT NOT NULL,
+    title VARCHAR(256) NOT NULL,
+    description TEXT,
+    due_date DATE,
+    status VARCHAR(32) DEFAULT 'PENDING',
+    completed_at DATETIME,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB COMMENT='干预任务表';
 
 -- ==============================
 -- 知识库
@@ -301,6 +317,8 @@ CREATE TABLE recipe_library (
     meal_type VARCHAR(32),
     suitable_for VARCHAR(256),
     total_calories DECIMAL(8,2),
+    cooking_time INT COMMENT '烹饪时间(分钟)',
+    difficulty VARCHAR(32) DEFAULT 'EASY' COMMENT '难度 EASY/MEDIUM/HARD',
     ingredients TEXT,
     steps TEXT,
     nutrition_info TEXT,
@@ -325,8 +343,11 @@ CREATE TABLE disease_library (
 CREATE TABLE education_content (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(256) NOT NULL,
+    summary VARCHAR(500),
     content LONGTEXT,
     content_type VARCHAR(32),
+    author VARCHAR(64),
+    view_count INT DEFAULT 0,
     target_audience VARCHAR(128),
     word_id BIGINT,
     status VARCHAR(32) DEFAULT 'ACTIVE',
@@ -336,34 +357,52 @@ CREATE TABLE education_content (
 
 CREATE TABLE education_word (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    word_name VARCHAR(128) NOT NULL,
-    description VARCHAR(500),
+    term VARCHAR(128) NOT NULL,
+    definition VARCHAR(500),
+    category VARCHAR(64),
+    example VARCHAR(500),
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB COMMENT='宣教词管理表';
 
--- ==============================
--- AI对话
--- ==============================
-CREATE TABLE ai_conversation (
+CREATE TABLE health_record (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    title VARCHAR(256) DEFAULT '新的对话',
-    last_message TEXT,
-    message_count INT DEFAULT 0,
+    member_id BIGINT NOT NULL,
+    record_date DATE NOT NULL,
+    type VARCHAR(32) NOT NULL,
+    metrics TEXT,
+    report_url VARCHAR(512),
+    doctor_notes VARCHAR(500),
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='AI对话会话表';
+) ENGINE=InnoDB COMMENT='健康档案表';
 
-CREATE TABLE ai_message (
+-- ==============================
+-- 系统关联表 & 通知表
+-- ==============================
+CREATE TABLE sys_user_role (
+    user_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    PRIMARY KEY (user_id, role_id)
+) ENGINE=InnoDB COMMENT='用户-角色关联表';
+
+CREATE TABLE sys_role_menu (
+    role_id BIGINT NOT NULL,
+    menu_id BIGINT NOT NULL,
+    PRIMARY KEY (role_id, menu_id)
+) ENGINE=InnoDB COMMENT='角色-菜单关联表';
+
+CREATE TABLE sys_notice (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    conversation_id BIGINT NOT NULL,
-    role VARCHAR(32) NOT NULL,
+    user_id BIGINT NOT NULL DEFAULT 0,
+    title VARCHAR(256) NOT NULL,
     content TEXT,
-    model VARCHAR(64) DEFAULT 'deepseek-chat',
-    tokens INT DEFAULT 0,
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB COMMENT='AI消息表';
+    notice_type VARCHAR(32) DEFAULT 'SYSTEM',
+    is_read TINYINT DEFAULT 0,
+    extra VARCHAR(512),
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB COMMENT='系统通知表';
 
 -- ==============================
 -- 初始化数据
@@ -393,4 +432,29 @@ INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, icon, me
 ('健康评估', 0, 4, '/assessment', 'assessment/index', 'chart', 'C', '0', '0'),
 ('健康干预', 0, 5, '/intervention', 'intervention/index', 'guide', 'C', '0', '0'),
 ('知识库', 0, 6, '/knowledge', 'knowledge/index', 'education', 'C', '0', '0'),
-('AI助手', 0, 7, '/ai-agent', 'ai/index', 'cpu', 'C', '0', '0');
+('智能分诊', 0, 8, '/assistant', 'assistant/AssistantChat', 'chat-dot-round', 'C', '0', '0');
+
+-- 用户-角色关联（admin → 超级管理员）
+INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 1);
+
+-- ============================================================
+-- Phase 2: AI 预约预订单（幂等）— 可重复执行
+-- 迁移独立文件: sql/migration_agent_preorder.sql
+-- ============================================================
+CREATE TABLE IF NOT EXISTS agent_preorder (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '预订单ID',
+    user_id         BIGINT       NOT NULL                COMMENT '操作人 sys_user.id',
+    member_id       BIGINT       NULL                    COMMENT '关联会员 member.id（可为空，人工确认时补）',
+    department      VARCHAR(64)  NOT NULL                COMMENT '拟就诊科室',
+    appointment_date DATE        NOT NULL                COMMENT '拟就诊日期',
+    symptom_summary VARCHAR(500) NULL                    COMMENT '症状/主诉摘要（幂等输入，便于人工核对）',
+    idempotency_key VARCHAR(64)  NOT NULL                COMMENT '幂等键 sha256(userId|memberId|department|date)',
+    status          VARCHAR(16)  NOT NULL DEFAULT 'PENDING'
+                    COMMENT 'PENDING=待确认 CONFIRMED=已确认 CANCELLED=已取消 EXPIRED=已过期',
+    confirm_time    DATETIME     NULL                    COMMENT '确认时间',
+    create_time     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_idempotency_key (idempotency_key),
+    KEY idx_user_status (user_id, status),
+    KEY idx_member (member_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='AI 预约预订单（幂等预占）';

@@ -1,8 +1,11 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="HealthApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
     <module name="health-admin" />
+    <selectedOptions>
+      <option name="environmentVariables" value="LLM_API_KEY=sk-6a83ee2b1b594395af5c431e6b114f21" />
+    </selectedOptions>
     <option name="SPRING_BOOT_MAIN_CLASS" value="com.health.web.HealthApplication" />
-    <option name="VM_PARAMETERS" value="-DDB_PASSWORD=root" />
+    <option name="VM_PARAMETERS" value="-DDB_PASSWORD=hjs200435" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

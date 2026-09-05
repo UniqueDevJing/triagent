@@ -32,7 +32,7 @@ public class ExamPlanController extends BaseController {
     @Log(title = "新增体检计划")
     public AjaxResult create(@RequestBody ExamPlan examPlan) { examPlanMapper.insert(examPlan); return success(examPlan); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改体检计划")
     public AjaxResult update(@RequestBody ExamPlan examPlan) { examPlanMapper.updateById(examPlan); return success(); }
 

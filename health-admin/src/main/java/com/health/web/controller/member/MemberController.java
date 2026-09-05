@@ -35,7 +35,7 @@ public class MemberController extends BaseController {
     @Log(title = "新增会员")
     public AjaxResult create(@RequestBody Member member) { memberMapper.insert(member); return success(member); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改会员")
     public AjaxResult update(@RequestBody Member member) { memberMapper.updateById(member); return success(); }
 

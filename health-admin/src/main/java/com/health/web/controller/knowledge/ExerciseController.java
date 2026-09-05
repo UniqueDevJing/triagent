@@ -32,7 +32,7 @@ public class ExerciseController extends BaseController {
     @Log(title = "新增运动")
     public AjaxResult create(@RequestBody ExerciseLibrary exercise) { exerciseLibraryMapper.insert(exercise); return success(exercise); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改运动")
     public AjaxResult update(@RequestBody ExerciseLibrary exercise) { exerciseLibraryMapper.updateById(exercise); return success(); }
 

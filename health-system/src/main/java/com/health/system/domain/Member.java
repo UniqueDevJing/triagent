@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import java.time.LocalDate;
+import java.time.Period;
 import java.math.BigDecimal;
 
 @Data
@@ -25,4 +26,11 @@ public class Member extends BaseEntity {
     private String smokingStatus;
     private String drinkingStatus;
     private String remark;
+    private String status;
+    private String memberLevel;
+
+    public Integer getAge() {
+        if (birthday == null) return null;
+        return Period.between(birthday, LocalDate.now()).getYears();
+    }
 }

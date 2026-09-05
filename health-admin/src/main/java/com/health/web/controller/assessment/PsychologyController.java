@@ -32,7 +32,7 @@ public class PsychologyController extends BaseController {
     @Log(title = "新增心理评估")
     public AjaxResult create(@RequestBody PsychologyAssessment assessment) { psychologyAssessmentMapper.insert(assessment); return success(assessment); }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Log(title = "修改心理评估")
     public AjaxResult update(@RequestBody PsychologyAssessment assessment) { psychologyAssessmentMapper.updateById(assessment); return success(); }
 

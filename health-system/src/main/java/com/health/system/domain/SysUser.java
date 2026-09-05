@@ -1,5 +1,6 @@
 package com.health.system.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.health.common.core.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -11,6 +12,8 @@ import lombok.EqualsAndHashCode;
 public class SysUser extends BaseEntity {
     private String userName;
     private String nickName;
+
+    @JsonIgnore
     private String password;
     private String email;
     private String phoneNumber;

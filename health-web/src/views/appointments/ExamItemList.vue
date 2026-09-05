@@ -10,6 +10,9 @@
           <el-button type="primary" @click="openCategoryDialog()">新增项目组</el-button>
         </div>
         <el-table :data="categories" v-loading="catLoading" stripe>
+          <template #empty>
+            <EmptyState title="暂无项目组" description="创建检测项目组以分类管理检测项" icon="Folder" action-text="新增项目组" @action="openCategoryDialog()" />
+          </template>
           <el-table-column prop="id" label="ID" width="60" />
           <el-table-column prop="name" label="名称" />
           <el-table-column prop="sortOrder" label="排序" width="80" />
@@ -39,6 +42,9 @@
           <el-button type="primary" @click="openItemDialog()">新增检测项</el-button>
         </div>
         <el-table :data="items" v-loading="itemLoading" stripe>
+          <template #empty>
+            <EmptyState title="暂无检测项" description="添加具体检测项目，如血压、血糖等" icon="Document" action-text="新增检测项" @action="openItemDialog()" />
+          </template>
           <el-table-column prop="id" label="ID" width="60" />
           <el-table-column prop="name" label="名称" />
           <el-table-column prop="description" label="描述" show-overflow-tooltip />
@@ -114,6 +120,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as examApi from '@/api/modules/examItems'
+import EmptyState from '@/components/EmptyState.vue'
 
 const activeTab = ref('category')
 

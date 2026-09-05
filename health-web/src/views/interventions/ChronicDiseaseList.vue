@@ -30,30 +30,20 @@
           {{ getMemberName(row.memberId) }}
         </template>
       </el-table-column>
-      <el-table-column label="疾病类型" width="120">
-        <template #default="{ row }">
-          <el-tag :type="diseaseTagType(row.diseaseType)" size="small">
-            {{ diseaseLabel(row.diseaseType) }}
-          </el-tag>
-        </template>
-      </el-table-column>
+      <el-table-column prop="diseaseName" label="疾病名称" min-width="120" />
+      <el-table-column prop="severity" label="严重程度" width="100" />
       <el-table-column prop="diagnosisDate" label="确诊日期" width="120" />
-      <el-table-column prop="monitoringFrequency" label="监测频率" min-width="120">
-        <template #default="{ row }">
-          {{ row.monitoringFrequency || '-' }}
-        </template>
-      </el-table-column>
-      <el-table-column label="目标指标" min-width="160" show-overflow-tooltip>
-        <template #default="{ row }">
-          {{ row.targetIndicators || '-' }}
-        </template>
-      </el-table-column>
+      <el-table-column prop="controlStatus" label="控制状况" min-width="140" show-overflow-tooltip />
+      <el-table-column prop="medication" label="用药" min-width="160" show-overflow-tooltip />
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
           <el-button text size="small" @click="openDialog(row)">编辑</el-button>
           <el-button text size="small" type="danger" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
+      <template #empty>
+        <EmptyState title="暂无慢病记录" description="记录会员慢性病信息，制定个性化慢病管理方案" icon="Collection" action-text="新增记录" @action="openDialog()" />
+      </template>
     </el-table>
 
     <div class="page-pagination">
@@ -85,25 +75,31 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="疾病类型">
-          <el-select v-model="form.diseaseType" style="width:100%">
-            <el-option label="高血压" value="HYPERTENSION" />
-            <el-option label="糖尿病" value="DIABETES" />
-            <el-option label="冠心病" value="CHD" />
-            <el-option label="慢阻肺" value="COPD" />
+        <el-form-item label="疾病名称">
+          <el-select v-model="form.diseaseName" style="width:100%" filterable allow-create>
+            <el-option label="高血压" value="高血压" />
+            <el-option label="2型糖尿病" value="2型糖尿病" />
+            <el-option label="冠心病" value="冠心病" />
+            <el-option label="慢性阻塞性肺疾病" value="慢性阻塞性肺疾病" />
+            <el-option label="高脂血症" value="高脂血症" />
+            <el-option label="脑卒中" value="脑卒中" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="严重程度">
+          <el-select v-model="form.severity" style="width:100%">
+            <el-option label="轻度" value="轻度" />
+            <el-option label="中度" value="中度" />
+            <el-option label="重度" value="重度" />
           </el-select>
         </el-form-item>
         <el-form-item label="确诊日期">
           <el-date-picker v-model="form.diagnosisDate" type="date" placeholder="选择日期" style="width:100%" value-format="YYYY-MM-DD" />
         </el-form-item>
+        <el-form-item label="控制状况">
+          <el-input v-model="form.controlStatus" placeholder="例如：血压控制良好，空腹血糖偏高" />
+        </el-form-item>
         <el-form-item label="用药记录">
-          <el-input v-model="form.medication" type="textarea" :rows="3" placeholder='JSON 格式，例如：[{"name":"阿莫西林","dosage":"0.5g","frequency":"每日三次"}]' />
-        </el-form-item>
-        <el-form-item label="目标指标">
-          <el-input v-model="form.targetIndicators" type="textarea" :rows="3" placeholder="请输入目标指标描述" />
-        </el-form-item>
-        <el-form-item label="监测频率">
-          <el-input v-model="form.monitoringFrequency" placeholder="例如：每日一次，每周一次" />
+          <el-input v-model="form.medication" type="textarea" :rows="3" placeholder="请输入用药信息" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -119,6 +115,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as api from '@/api/modules/interventionAdmin'
 import { getMembers } from '@/api/modules/members'
+import EmptyState from '@/components/EmptyState.vue'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -132,10 +129,6 @@ const memberFilter = ref('')
 const memberOptions = ref([])
 const memberMap = ref({})
 
-const diseaseTagMap = { HYPERTENSION: 'danger', DIABETES: 'primary', CHD: 'warning', COPD: '' }
-const diseaseLabelMap = { HYPERTENSION: '高血压', DIABETES: '糖尿病', CHD: '冠心病', COPD: '慢阻肺' }
-function diseaseTagType(v) { return diseaseTagMap[v] || '' }
-function diseaseLabel(v) { return diseaseLabelMap[v] || v }
 function getMemberName(id) { return memberMap.value[id] || `ID:${id}` }
 
 onMounted(async () => {
@@ -174,7 +167,7 @@ async function fetch() {
 }
 
 function openDialog(row) {
-  form.value = row ? { ...row } : { memberId: '', diseaseType: '', diagnosisDate: '', medication: '', targetIndicators: '', monitoringFrequency: '' }
+  form.value = row ? { ...row } : { memberId: '', diseaseName: '', severity: '', diagnosisDate: '', controlStatus: '', medication: '' }
   dialogVisible.value = true
 }
 
@@ -191,9 +184,9 @@ async function save() {
 }
 
 async function handleDelete(row) {
-  await ElMessageBox.confirm('确认删除该慢病记录？', '提示', { type: 'warning' })
-  await api.deleteChronicDisease(row.id)
-  ElMessage.success('已删除')
-  fetch()
+  try { await ElMessageBox.confirm('确认删除该慢病记录？', '提示', { type: 'warning' }) } catch { return }
+  try {
+    await api.deleteChronicDisease(row.id); ElMessage.success('已删除'); fetch()
+  } catch (e) { ElMessage.error(e?.message || '删除失败') }
 }
 </script>

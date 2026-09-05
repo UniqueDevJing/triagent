@@ -10,12 +10,12 @@ export const useAuthStore = defineStore('auth', () => {
   const role = computed(() => user.value?.role || '')
   const userName = computed(() => user.value?.name || user.value?.username || '')
 
-  async function login(username, password) {
-    const res = await request.post('/auth/login', { username, password })
+  async function login(username, password, captchaKey, captchaCode) {
+    const res = await request.post('/v1/login', { username, password, captchaKey, captchaCode })
     token.value = res.data.token
-    user.value = res.data
+    user.value = res.data.user
     localStorage.setItem('token', res.data.token)
-    localStorage.setItem('user', JSON.stringify(res.data))
+    localStorage.setItem('user', JSON.stringify(res.data.user))
     return res.data
   }
 
