@@ -7,6 +7,7 @@
   <img src="https://img.shields.io/badge/DeepSeek-LLM-4D6BFE" alt="DeepSeek"/>
   <img src="https://img.shields.io/badge/Vue-3.4-42B883" alt="Vue 3"/>
   <img src="https://img.shields.io/badge/SSE-流式-8A2BE2" alt="SSE"/>
+  <img src="https://img.shields.io/github/actions/workflow/status/UniqueDevJing/triagent/ci.yml?branch=main&label=CI" alt="CI"/>
 </p>
 
 > 对外产品名：**智能医疗系统** · 仓库：**triagent**（Triage + Agent）
