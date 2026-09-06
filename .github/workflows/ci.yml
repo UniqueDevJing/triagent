@@ -20,7 +20,7 @@ jobs:
       - name: Compile all modules
         run: mvn -q -pl health-admin -am compile -DskipTests
       - name: Unit tests (32 cases · state machine / idempotency / routing)
-        run: mvn -pl health-admin test
+        run: mvn -q -pl health-admin -am test
 
   frontend:
     name: Frontend · build
