@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.Disposable;
 
 import java.io.IOException;
 import java.util.Map;
@@ -50,7 +51,8 @@ public class AssistantController extends BaseController {
     public SseEmitter chat(@RequestBody ChatRequest req) {
         Long userId = StpUtil.getLoginIdAsLong();
         SseEmitter emitter = new SseEmitter(120_000L);
-        orchestrator.chat(req, userId).subscribe(
+        // P0-2：客户端断开/超时 → 取消上游（终止进行中的 LLM 调用，避免白烧 token）
+        Disposable subscription = orchestrator.chat(req, userId).subscribe(
                 event -> {
                     try {
                         emitter.send(SseEmitter.event()
@@ -72,6 +74,14 @@ public class AssistantController extends BaseController {
                 },
                 emitter::complete
         );
+        Runnable cancel = () -> {
+            if (!subscription.isDisposed()) {
+                subscription.dispose();
+            }
+        };
+        emitter.onCompletion(cancel);
+        emitter.onTimeout(cancel);
+        emitter.onError(t -> cancel.run());
         return emitter;
     }
 

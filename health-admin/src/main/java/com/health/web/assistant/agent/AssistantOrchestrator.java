@@ -316,7 +316,7 @@ public class AssistantOrchestrator {
             "帮我看看", "分析", "疼得", "痛得", "需要注意", "去不去医院", "挂急诊", "会死"
     };
 
-    private boolean hasTriageHelpIntent(String message) {
+    boolean hasTriageHelpIntent(String message) {
         if (message == null) {
             return false;
         }
@@ -330,7 +330,7 @@ public class AssistantOrchestrator {
 
     private static final String[] CANCEL_CUES = {"取消", "不用了", "算了", "不约了", "不挂了", "暂停", "先不了"};
 
-    private boolean hasCancelIntent(String message) {
+    boolean hasCancelIntent(String message) {
         if (message == null) {
             return false;
         }
@@ -347,7 +347,7 @@ public class AssistantOrchestrator {
             "不是急症", "排除", "看过急诊", "急诊已排", "没事了", "虚惊", "检查过了", "已就医", "已经去急诊"
     };
 
-    private boolean hasEmergencyOverride(String message) {
+    boolean hasEmergencyOverride(String message) {
         if (message == null) {
             return false;
         }
@@ -364,7 +364,7 @@ public class AssistantOrchestrator {
             "以前", "之前", "曾", "有过", "病史", "既往", "去年", "上个月", "前阵", "复诊", "复查"
     };
 
-    private boolean hasPastTense(String message) {
+    boolean hasPastTense(String message) {
         if (message == null) {
             return false;
         }
