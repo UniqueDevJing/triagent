@@ -129,7 +129,11 @@ public class SymptomStateMachine {
         boolean accompany = ACCOMPANY.stream().anyMatch(text::contains);
         st.bodyKnown = st.bodyKnown || body;
         st.durationKnown = st.durationKnown || duration;
-        st.accompanyKnown = st.accompanyKnown || accompany;
+        // 否定语义：用户回答「无 / 没有任何伴随症状」也应视为已陈述伴随情况
+        // （提示语明确引导可回答"无"，若不识别会导致无限追问——修复见测试 SymptomStateMachineTest）
+        if (!st.accompanyKnown && (accompany || text.contains("无") || text.contains("没有"))) {
+            st.accompanyKnown = true;
+        }
 
         // 3) 按 部位→时长→伴随症状 依次追问
         if (!st.bodyKnown) {
