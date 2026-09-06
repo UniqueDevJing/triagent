@@ -31,7 +31,7 @@
 | 7 | **可观测** | 每轮耗时 / turnType / 工具次数 / 紧急度分布 / 护栏命中，`/metrics` 聚合近 500 轮 |
 | 8 | **结构化输出** | `BeanOutputConverter(TriageResult)` + 提示词内嵌 JSON Schema + 解析失败自动重试，输出稳定 |
 
-**量化评估（G1–G10 golden set，真实 DeepSeek）**：紧急度 **0.90** · 科室命中 **1.00** · 综合 **9.4 / 10** · 红旗样例安全通过 **4/4** · 全部红旗/澄清/预约路径 **0 依赖 LLM 可离线演示**。逐例原始数据（耗时/置信度/工具/来源）见 [docs/agent/评估报告.md](docs/agent/评估报告.md) 与 [docs/agent/测试数据报告.md](docs/agent/测试数据报告.md)。
+**量化评估（30 例 golden set + LLM-as-Judge 双轨裁判，真实 DeepSeek）**：紧急度 **0.88** · 科室命中 **28/29** · 规则综合 **9.24 / 10** · LLM 裁判安全性 **29/29 pass** · 危险方向误判（判轻）**0 例** · 确定性路径 **6–24ms（0 LLM 调用）** vs LLM 路径均值 5.3s。逐例数据与裁判意见见 [测试数据报告](docs/agent/测试数据报告.md) / [评估报告-LLM裁判](docs/agent/评估报告-LLM裁判.md) / [评估报告](docs/agent/评估报告.md)。
 
 ---
 
