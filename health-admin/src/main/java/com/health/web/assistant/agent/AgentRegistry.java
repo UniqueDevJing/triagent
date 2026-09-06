@@ -16,7 +16,7 @@ public class AgentRegistry {
 
     private final Map<AgentType, AgentDefinition> definitions = new EnumMap<>(AgentType.class);
 
-    private static final Set<String> SCHEDULER_KEYWORDS = Set.of("预约", "挂号", "排班", "改期", "取消预约", "订体检", "安排体检", "约医生");
+    private static final Set<String> SCHEDULER_KEYWORDS = Set.of("预约", "挂号", "排班", "改期", "取消预约", "订体检", "安排体检", "健康体检", "约医生");
     private static final Set<String> REPORT_KEYWORDS = Set.of("报告", "体检结果", "指标", "化验单", "解读", "结论", "风险等级");
 
     public AgentRegistry() {
