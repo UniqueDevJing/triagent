@@ -15,7 +15,7 @@ import request from '@/api/request'
  */
 export function chatStream(sessionId, message, handlers = {}) {
   const token = localStorage.getItem('token') || ''
-  return fetch('/api/v1/assistant/chat', {
+  return fetch(import.meta.env.BASE_URL + 'api/v1/assistant/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
