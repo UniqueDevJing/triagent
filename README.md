@@ -10,7 +10,9 @@
   <img src="https://img.shields.io/github/actions/workflow/status/UniqueDevJing/triagent/ci.yml?branch=main&label=CI" alt="CI"/>
 </p>
 
-> 对外产品名：**智能医疗系统**· 仓库：**triagent**（Triage + Agent）
+> **在线体验：http://114.215.186.113/triagent/** （登录 admin / admin123，左侧「智能助手」进入多 Agent 对话）
+>
+> 对外项目名：**基于 LLM 的多 Agent 分诊就医系统** · 仓库：**triagent**（Triage + Agent）
 >
 > 一句话：**让 AI 先判断「该不该去医院、去哪个科」，再领航完成「报告解读 → 门诊预约」的多智能体就医助手。**在成熟的健康管理平台（会员 / 预约 / 评估 / 干预 / 知识库）之上，叠加了一套以 **Spring AI 1.0.0 GA + DeepSeek**驱动的
 **多 Agent 编排层**：流式输出、透明工具调用、RAG 知识溯源、双护栏、Supervisor 规划、医疗安全状态机与运行期指标。
