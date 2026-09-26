@@ -55,7 +55,7 @@ schemas.EducationListResponse = listResp('EducationListResponse', 'EducationItem
 const spec = {
   openapi: '3.0.3',
   info: { title: '业务数据查询接口', description: '提供用户信息查询和数据管理功能。', version: '1.0.0' },
-  servers: [{ url: 'https://uniquejingclaudecoding.top', description: '服务器' }],
+  servers: [{ url: 'http://114.215.186.113/triagent', description: '线上环境' }],
   components: {
     schemas
   },

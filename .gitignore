@@ -56,7 +56,5 @@ health-web/dist/
 *.bak
 
 # 内部运维/过程文档（不公开）
-CLAUDE.md
 .work/
 项目优化建议报告.md
-docs/superpowers/

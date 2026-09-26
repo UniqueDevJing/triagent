@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/github/actions/workflow/status/UniqueDevJing/triagent/ci.yml?branch=main&label=CI" alt="CI"/>
 </p>
 
-> **在线体验：http://114.215.186.113/triagent/** （登录 admin / admin123，左侧「智能助手」进入多 Agent 对话）
+> **在线体验：http://114.215.186.113/triagent/** （登录 admin / admin123，左侧「智能分诊」进入多 Agent 对话）
 >
 > 对外项目名：**基于 LLM 的多 Agent 分诊就医系统** · 仓库：**triagent**（Triage + Agent）
 >
