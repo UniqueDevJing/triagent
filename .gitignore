@@ -58,3 +58,6 @@ health-web/dist/
 # 内部运维/过程文档（不公开）
 .work/
 项目优化建议报告.md
+
+# git filter-branch 残留
+.git-rewrite/
