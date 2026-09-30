@@ -62,6 +62,24 @@
                 </div>
               </div>
 
+              <!-- 两步确认第二步：待确认预订单卡片。
+                   后端 createPreOrder 的 tool_result 现在结构化下发 orderId/status，
+                   此前只有纯文本摘要，confirmPreOrder 接口一直是死代码、两步确认断在第二步。 -->
+              <div v-if="m.pendingOrder" class="pending-order">
+                <div class="sec-label">🗓️ 待确认预约（第二步）</div>
+                <div class="po-meta">
+                  #{{ m.pendingOrder.orderId }} · {{ m.pendingOrder.department }} · {{ m.pendingOrder.date }}
+                </div>
+                <button
+                  class="po-btn"
+                  :disabled="m.pendingOrder.confirming || m.pendingOrder.confirmed"
+                  @click="confirmOrder(m)"
+                >
+                  {{ m.pendingOrder.confirmed ? '✓ 已确认' : (m.pendingOrder.confirming ? '确认中…' : '确认预约') }}
+                </button>
+                <div v-if="m.pendingOrder.confirmed" class="po-done">预约已确认，请按时到院</div>
+              </div>
+
               <!-- 澄清追问 + 快捷回复 -->
               <div v-if="m.clarify" class="clarify">
                 <div class="sec-label">✍️ 需要你补充</div>
@@ -161,12 +179,28 @@
 
 <script setup>
 import { nextTick, onMounted, ref } from 'vue'
-import { chatStream } from '@/api/modules/assistant'
+import { chatStream, confirmPreOrder } from '@/api/modules/assistant'
 
 const input = ref('')
 const busy = ref(false)
 const agentLabel = ref('')
 const messages = ref([])
+
+// 两步确认第二步：确认预订单。此前后端端点已存在、前端接口函数已定义，但从未被调用。
+async function confirmOrder(m) {
+  const po = m.pendingOrder
+  if (!po || po.confirming || po.confirmed) return
+  po.confirming = true
+  try {
+    await confirmPreOrder(po.orderId)
+    po.confirmed = true
+    po.confirming = false
+    m.text += '\n\n✅ 预订单 #' + po.orderId + ' 已确认，请按时到院。'
+  } catch (e) {
+    po.confirming = false
+  }
+  scrollBottom()
+}
 const scrollRef = ref(null)
 let sessionId = 'triage-' + Date.now().toString(36)
 
@@ -253,8 +287,27 @@ async function send(text) {
       },
       tool_result(d) {
         const t = bot.tools.find((x) => x.name === d.name && !x.result)
-        if (t) t.result = d.result
-        else bot.tools.push({ name: d.name, args: '', result: d.result })
+        const apply = (text) => {
+          if (t) t.result = text
+          else bot.tools.push({ name: d.name, args: '', result: text })
+        }
+        // createPreOrder 的结果是结构化 JSON（orderId/status/department/date）
+        if (d.name === 'createPreOrder') {
+          try {
+            const o = JSON.parse(d.result)
+            if (o && o.orderId) {
+              apply(o.summary || '已生成预订单')
+              bot.pendingOrder = {
+                orderId: o.orderId, status: o.status,
+                department: o.department, date: o.date,
+                confirming: false, confirmed: false,
+              }
+              scrollBottom()
+              return
+            }
+          } catch (e) { /* 非结构化（如日期格式错误提示），按纯文本落回工具行 */ }
+        }
+        apply(d.result)
         scrollBottom()
       },
       clarify(d) {
@@ -435,6 +488,26 @@ async function send(text) {
   padding: 2px 8px; border-radius: 999px; font-size: 11px;
 }
 .plan-reason { color: #6b5a8f; }
+.pending-order {
+  margin-top: 4px;
+  padding: 10px 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+}
+.pending-order .po-meta { font-size: 13px; color: #7c2d12; margin: 4px 0 8px; }
+.pending-order .po-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #ea580c;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pending-order .po-btn:disabled { opacity: 0.55; cursor: default; }
+.pending-order .po-done { margin-top: 6px; font-size: 12.5px; color: #16a34a; }
+
 .tools { display: flex; flex-direction: column; gap: 6px; }
 .tool-row {
   display: flex; flex-direction: column; gap: 2px; font-size: 12px;

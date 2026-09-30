@@ -39,3 +39,9 @@ logging:
   level:
     com.health: DEBUG
     org.springframework: INFO
+
+# 多 Agent 记忆层实现选择
+# 开发：默认内存版（本地 Redis 未起也不影响问答）
+agent:
+  memory:
+    store: memory

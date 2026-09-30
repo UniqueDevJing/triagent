@@ -40,3 +40,9 @@ logging:
   level:
     com.health: WARN
     org.springframework: WARN
+
+# 多 Agent 记忆层实现选择
+# 生产：记忆/事实落 Redis（本机已有 redis-server，重启不丢上下文）
+agent:
+  memory:
+    store: redis
