@@ -17,10 +17,14 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - name: Compile all modules
-        run: mvn -q -pl health-admin -am compile -DskipTests
+      - name: Install upstream modules
+        # -am 只会在 reactor 内构建上游模块，不会装进本地仓库；
+        # 测试阶段 health-admin 解析 com.health:health-framework 时
+        # 会去中央仓库找而失败（2026-09-06 的 CI 红叉即此原因）。
+        # 先 install 一次，后续 test 便可直接复用本地仓库中的模块 jar。
+        run: mvn -q -B -pl health-admin -am install -DskipTests
       - name: Unit tests (32 cases · state machine / idempotency / routing)
-        run: mvn -q -pl health-admin -am test
+        run: mvn -q -B -pl health-admin -am test
 
   frontend:
     name: Frontend · build
