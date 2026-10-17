@@ -143,18 +143,21 @@ class PreOrderServiceRedisDegradationTest {
     }
 
     @Test
-    @DisplayName("幂等键在同一用户同科室同日下稳定（Redis 挂时也稳定）")
-    void idempotencyKeyIsStableEvenWhenRedisDown() {
-        when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class)))
-                .thenThrow(new RedisConnectionFailureException("Redis 连不上"));
+    @DisplayName("幂等键在同一用户同科室同日下稳定（与 Redis 无关）")
+    void idempotencyKeyIsStable() {
+        // 幂等键是纯函数（sha256(userId|memberId|department|date)），
+        // 不经过 Redis，因此这里不做任何桩。
         java.time.LocalDate date = java.time.LocalDate.parse("2026-09-20");
 
         String k1 = PreOrderService.idempotencyKey(1L, 3L, "呼吸内科", date);
         String k2 = PreOrderService.idempotencyKey(1L, 3L, "呼吸内科", date);
         String k3 = PreOrderService.idempotencyKey(1L, 3L, "呼吸内科",
                 date.plusDays(1));
+        String k4 = PreOrderService.idempotencyKey(2L, 3L, "呼吸内科", date);
 
         assertThat(k1).isEqualTo(k2);
         assertThat(k1).isNotEqualTo(k3);
+        assertThat(k1).isNotEqualTo(k4);
+        assertThat(k1).hasSize(64);
     }
 }
