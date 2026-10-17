@@ -185,7 +185,6 @@ public class SymptomStateMachine {
         }
         return false;
     }
-    }
 
     public Decision decide(String sessionId, String message) {
         if (message == null) {
