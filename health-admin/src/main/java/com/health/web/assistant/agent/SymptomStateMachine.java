@@ -85,6 +85,47 @@ public class SymptomStateMachine {
     private static final Pattern DURATION_PATTERN = Pattern.compile(
             "(\\d+\\s*(个\\s*)?(小时|天|周|月|年))|((一|两|三|四|五|六|七|八|九|十|几)?\\s*(个\\s*)?(小时|天|周|月|年)以内)|半小时|半个多月|几(天|周|月|年)|多年|长期|反复|最近|这两个月|半年|一个多月|多月");
 
+    /**
+     * 「无伴随症状」的否定回答识别。
+     *
+     * <p>不能用 {@code text.contains("无")}：该字高频且大量出现在**症状描述本身**
+     * ——「无力」「无法呼吸」「无意识」都含「无」，命中后 accompanyKnown 被误置为
+     * true，系统认为三字段已齐而跳过追问，把需要评估的症状当成了「用户表示没有症状」。
+     * 分诊场景下这是安全性问题。
+     *
+     * <p>这里用「否定词 + 被否定对象白名单」而非一条大正则：正则里的可选量词很容易
+     * 在「修掉一个误判、又制造一批新误判」之间反复（限定词写成 {@code ?} 就会退化成
+     * 裸「无」，把「无力」「无法」全部吞掉）。白名单式判定更直观，也不易自相矛盾。
+     *
+     * <p>两条规则任一成立即为否定回答：
+     * <ol>
+     *   <li><b>整句短应答</b>：剥去标点空白后整段就是一个否定词
+     *       （「无」「没有」「都没」「暂时无」「没有了」）—— 提示语引导用户回答"无"，
+     *       这是最常见形态；</li>
+     *   <li><b>否定词 + 白名单词紧跟其后</b>：「无发热」「没有其他症状」
+     *       「无明显伴随症状」。要求紧跟是因为「无力」「无法呼吸」中「无」后面
+     *       接的是用户**自己的症状**，不在白名单内，故不命中。</li>
+     * </ol>
+     */
+    private static final Set<String> NEGATION_WORDS = Set.of("无", "没有", "都没", "暂时没有", "暂时无", "没", "没什么");
+
+    /**
+     * 症状**转归**描述词：出现在否定词之后时说明用户在描述症状变化
+     * （「无明显缓解」「无明显不适感加重」），而不是在回答「有无伴随症状」，
+     * 因此即便同时命中了白名单词也必须排除。
+     */
+    private static final List<String> PROGRESSION_WORDS = List.of(
+            "缓解", "加重", "减轻", "变化", "好转", "减轻了", "加重了");
+
+    /** 否定词后允许出现的「被否定对象」：出现其一才构成否定回答 */
+    private static final List<String> NEGATION_OBJECTS = List.of(
+            "其他", "其它", "别的", "任何", "相关", "伴随", "症状", "不适", "明显",
+            "发热", "发烧", "恶心", "呕吐", "乏力", "疲劳", "盗汗", "消瘦",
+            "腹泻", "便秘", "麻木", "疼痛", "心悸", "心慌", "咳嗽", "咳痰", "皮疹", "瘙痒");
+
+    /** 判定前剥除标点与空白，让「无。」「没有！」这类带标点的短应答也能命中规则 1 */
+    private static final Pattern PUNCT_RE = Pattern.compile("[\\s，。！？、,.!?；;：:]");
+
     private static final int MAX_SESSIONS = 2000;
 
     private final Map<String, SessionState> sessions = new LinkedHashMap<>(64, 0.75f, true) {
@@ -101,6 +142,49 @@ public class SymptomStateMachine {
             return List.of();
         }
         return RED_FLAGS.keySet().stream().filter(text::contains).collect(java.util.stream.Collectors.toList());
+    }
+
+    /** 剥除标点与空白，使「无。」「没有！」这类带标点的短应答也能命中否定规则 */
+    private static String stripPunctuation(String text) {
+        return PUNCT_RE.matcher(text).replaceAll("");
+    }
+
+    /** 该文本是否构成「无伴随症状」的否定回答（供测试与 Supervisor 预判复用） */
+    public boolean isNegationAnswer(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        String s = stripPunctuation(text);
+        if (s.isEmpty()) {
+            return false;
+        }
+        // 规则 1：整段就是否定词
+        if (NEGATION_WORDS.contains(s) || s.endsWith("没有了") || s.endsWith("无了") || s.endsWith("都没了")) {
+            return true;
+        }
+        // 规则 2：否定词后紧跟白名单词
+        for (String neg : NEGATION_WORDS) {
+            int idx = s.indexOf(neg);
+            if (idx < 0) {
+                continue;
+            }
+            int tail = idx + neg.length();
+            if (tail >= s.length()) {
+                continue;
+            }
+            String rest = s.substring(tail);
+            boolean isProgression = PROGRESSION_WORDS.stream().anyMatch(rest::contains);
+            if (isProgression) {
+                continue;   // 症状转归描述（无明显缓解 / 无加重），不是否定回答
+            }
+            for (String obj : NEGATION_OBJECTS) {
+                if (rest.startsWith(obj)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     }
 
     public Decision decide(String sessionId, String message) {
@@ -129,9 +213,11 @@ public class SymptomStateMachine {
         boolean accompany = ACCOMPANY.stream().anyMatch(text::contains);
         st.bodyKnown = st.bodyKnown || body;
         st.durationKnown = st.durationKnown || duration;
-        // 否定语义：用户回答「无 / 没有任何伴随症状」也应视为已陈述伴随情况
+        // 否定语义：用户回答「无 / 没有伴随症状」也应视为已陈述伴随情况
         // （提示语明确引导可回答"无"，若不识别会导致无限追问——修复见测试 SymptomStateMachineTest）
-        if (!st.accompanyKnown && (accompany || text.contains("无") || text.contains("没有"))) {
+        // 用白名单判定而非 contains("无")：「无力」「无法呼吸」「无意识」等
+        // 症状描述本身含「无」，误判会让系统以为三字段已齐而跳过追问（安全性问题）。
+        if (!st.accompanyKnown && (accompany || isNegationAnswer(text))) {
             st.accompanyKnown = true;
         }
 
