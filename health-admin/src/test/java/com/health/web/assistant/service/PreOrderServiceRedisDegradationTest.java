@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -115,9 +116,11 @@ class PreOrderServiceRedisDegradationTest {
     @DisplayName("落库成功但占位回填失败 → 订单有效，不抛异常")
     void toleratesWriteBackFailure() {
         when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
-        // 预占成功后，回填占位时失败
-        when(valueOps.set(anyString(), anyString(), any(Duration.class)))
-                .thenThrow(new RedisConnectionFailureException("Redis 写入时掉线"));
+        // 预占成功后，回填占位时失败。
+        // 注意：ValueOperations.set 返回 void，不能用 when().thenThrow()，
+        // 必须用 doThrow().when(...) 的写法。
+        doThrow(new RedisConnectionFailureException("Redis 写入时掉线"))
+                .when(valueOps).set(anyString(), anyString(), any(Duration.class));
 
         AgentPreOrder result = service.create(1L, 3L, "呼吸内科", "2026-09-20", "咳嗽");
 
