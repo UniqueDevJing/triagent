@@ -54,14 +54,26 @@ public class PreOrderService {
         String redisKey = REDIS_KEY_PREFIX + key;
 
         // 第一层：Redis 预占。已被占 → 说明同一意图已创建过，直接回查返回（幂等命中）
-        Boolean claimed = redis.opsForValue().setIfAbsent(redisKey, "1", CLAIM_TTL);
-        if (Boolean.FALSE.equals(claimed)) {
-            AgentPreOrder existing = findByKey(key);
-            if (existing != null) {
-                log.info("幂等命中(Redis)：key={}, 返回预订单 id={}", key, existing.getId());
-                return existing;
+        //
+        // Redis 是加速层不是正确性层：第二层的 DB 唯一索引才是幂等的最终保证。
+        // 因此这里必须容错——Redis 不可用（连接失败/超时）时不能中断下单，
+        // 否则「Redis 挂 → 预约功能整体不可用」，兜底层形同虚设。
+        // 降级后直接走 DB 唯一索引：并发场景仍被唯一键拦截，串行场景正常落库。
+        // 语义与 RedisSessionFactStore 的异常处理保持一致（全项目同一套降级约定）。
+        boolean redisAvailable = true;
+        try {
+            Boolean claimed = redis.opsForValue().setIfAbsent(redisKey, "1", CLAIM_TTL);
+            if (Boolean.FALSE.equals(claimed)) {
+                AgentPreOrder existing = findByKey(key);
+                if (existing != null) {
+                    log.info("幂等命中(Redis)：key={}, 返回预订单 id={}", key, existing.getId());
+                    return existing;
+                }
+                // Redis 有占位但记录缺失（异常边角），落到 DB 唯一索引兜底
             }
-            // Redis 有占位但记录缺失（异常边角），落到 DB 唯一索引兜底
+        } catch (Exception e) {
+            redisAvailable = false;
+            log.warn("Redis 预占失败，降级为仅依赖 DB 唯一索引幂等（并发仍可拦截）: {}", e.getMessage());
         }
 
         AgentPreOrder po = new AgentPreOrder();
@@ -83,8 +95,16 @@ public class PreOrderService {
             }
             throw ex;
         }
-        redis.opsForValue().set(redisKey, String.valueOf(po.getId()), CLAIM_TTL);
-        log.info("创建预订单: id={}, userId={}, memberId={}, dept={}, date={}", po.getId(), userId, memberId, dept, date);
+        if (redisAvailable) {
+            try {
+                redis.opsForValue().set(redisKey, String.valueOf(po.getId()), CLAIM_TTL);
+            } catch (Exception e) {
+                // 单已落库，仅回填占位失败；下次请求会走 DB 唯一索引命中，不影响正确性
+                log.warn("预订单已落库但 Redis 占位回填失败（不影响幂等正确性）: {}", e.getMessage());
+            }
+        }
+        log.info("创建预订单: id={}, userId={}, memberId={}, dept={}, date={}, redisAvailable={}",
+                po.getId(), userId, memberId, dept, date, redisAvailable);
         return po;
     }
 
