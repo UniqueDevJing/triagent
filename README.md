@@ -1,4 +1,4 @@
-# 基于 LLM 的多 Agent 分诊就医系统
+# triagent · 基于 LLM 的多 Agent 分诊就医系统
 
 <p align="left">
   <img src="https://img.shields.io/badge/Java-17-orange" alt="Java 17"/>
