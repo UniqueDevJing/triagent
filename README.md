@@ -29,7 +29,7 @@
 | 4 | **透明推理**| 工具调用经 SSE 侧通道下发 `tool_call` / `tool_result` / `plan` 事件，前端逐步展示「Agent 为什么这么走」 |
 | 5 | **RAG 溯源 + 防注入**| 疾病库/科普文章检索注入并标记「外部不可信」；来源随 `done` 回传，可点击溯源 |
 | 6 | **预约两步确认 + 幂等**| Agent 只落 PENDING 预订单（sha256 幂等键 + Redis 预占 + DB 唯一索引兜底），页面确认后转 CONFIRMED |
-| 7 | **可观测**| 每轮耗时 / turnType / 工具次数 / 紧急度分布 / 护栏命中，`/metrics` 聚合近 500 轮 |
+| 7 | **可观测**| 每轮耗时 / turnType / 工具次数 / 紧急度分布 / 护栏命中，`/metrics` 聚合近 500 轮；HTTP 入口新增 `X-Trace-Id` 响应头，与 Agent 指标互补形成「入口延迟 + 内部编排」完整视图 |
 | 8 | **结构化输出**| `BeanOutputConverter(TriageResult)` + 提示词内嵌 JSON Schema + 解析失败自动重试，输出稳定 |
 
 **量化评估（30 例 golden set + LLM-as-Judge 双轨裁判，真实 DeepSeek）**：紧急度 **0.88**· 科室命中 **28/29**· 规则综合 **9.24 / 10**· LLM 裁判安全性 **29/29 pass**· 危险方向误判（判轻）**0 例**· 确定性路径 **6–24ms（0 LLM 调用）**vs LLM 路径均值 5.3s。逐例数据与裁判意见见 [测试数据报告](docs/agent/测试数据报告.md) / [评估报告-LLM裁判](docs/agent/评估报告-LLM裁判.md) / [评估报告](docs/agent/评估报告.md)。
