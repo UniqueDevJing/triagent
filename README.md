@@ -1,5 +1,9 @@
 # triagent · 基于 LLM 的多 Agent 分诊就医系统
 
+> **让 AI 先判断「该不该去医院、去哪个科」，再领航完成「报告解读 → 门诊预约」的多智能体就医助手。**
+>
+> *A multi-agent triage assistant — Supervisor planning, deterministic medical-safety state machine, RAG sourcing, and dual guardrails, built on Spring AI 1.0 GA + DeepSeek.*
+
 <p align="left">
   <img src="https://img.shields.io/badge/Java-17-orange" alt="Java 17"/>
   <img src="https://img.shields.io/badge/Spring%20Boot-3.2-brightgreen" alt="Spring Boot 3.2"/>
@@ -14,8 +18,22 @@
 >
 > 对外项目名：**基于 LLM 的多 Agent 分诊就医系统** · 仓库：**triagent**（Triage + Agent）
 >
-> 一句话：**让 AI 先判断「该不该去医院、去哪个科」，再领航完成「报告解读 → 门诊预约」的多智能体就医助手。**在成熟的健康管理平台（会员 / 预约 / 评估 / 干预 / 知识库）之上，叠加了一套以 **Spring AI 1.0.0 GA + DeepSeek**驱动的
-**多 Agent 编排层**：流式输出、透明工具调用、RAG 知识溯源、双护栏、Supervisor 规划、医疗安全状态机与运行期指标。
+> 在成熟的健康管理平台（会员 / 预约 / 评估 / 干预 / 知识库）之上，叠加了一套以 **Spring AI 1.0.0 GA + DeepSeek**驱动的
+> **多 Agent 编排层**：流式输出、透明工具调用、RAG 知识溯源、双护栏、Supervisor 规划、医疗安全状态机与运行期指标。
+
+---
+
+## 目录
+
+- [为什么值得看](#为什么值得看)
+- [架构一览](#架构一览)
+- [SSE 事件协议](#sse-事件协议)
+- [主要端点](#主要端点)
+- [快速开始](#快速开始)
+- [端到端演示脚本](#端到端演示脚本)
+- [项目结构](#项目结构)
+- [演进里程碑](#演进里程碑)
+- [医疗安全与工程约定](#医疗安全与工程约定)
 
 ---
 
@@ -71,6 +89,8 @@ flowchart LR
 | `clarify` | `{question, missing[]}` | 状态机追问（bodyPart / duration / accompany） |
 | `done` | `{answer, triage, agent, sources[]}` | 回答 + 结构化分诊 + 命中 Agent + 知识来源 |
 | `error` | `{message}` | 失败兜底 |
+
+---
 
 ## 主要端点
 
@@ -153,14 +173,18 @@ cd health-web && npm install && npm run dev
 └── pom.xml                Spring AI BOM 1.0.0
 ```
 
+---
+
 ## 演进里程碑
 
-- **Phase 1**编排骨架 + SSE 流式 + 双护栏/审计 
-- **Phase 2**多 Agent 路由 + 工具事件可视化 + 预约幂等 
-- **Phase 3**RAG 溯源 + 分诊状态机 
-- **Phase 4**可观测指标 + 前端透明推理页 + G1–G10 评估 
-- **Phase 5**会话连续性路由 + 多 Agent 事实协作 + Supervisor 规划 + `plan` 事件可视化 
+- **Phase 1**编排骨架 + SSE 流式 + 双护栏/审计
+- **Phase 2**多 Agent 路由 + 工具事件可视化 + 预约幂等
+- **Phase 3**RAG 溯源 + 分诊状态机
+- **Phase 4**可观测指标 + 前端透明推理页 + G1–G10 评估
+- **Phase 5**会话连续性路由 + 多 Agent 事实协作 + Supervisor 规划 + `plan` 事件可视化
 - **Roadmap**向量检索（pgvector/Milvus）· Supervisor 全语义规划（LLM 拆子任务）· 单元测试补齐 · Docker Compose 一键起
+
+---
 
 ## 医疗安全与工程约定
 
