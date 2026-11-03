@@ -17,7 +17,8 @@ import java.util.stream.Collectors;
 /**
  * Agent 统一工具集（每请求一个实例）。
  * 复用现有 mapper/服务，包一层 @Tool + 事件发布：模型可调，前端可看（透明推理）。
- * 各 Agent 通过 AgentDefinition.allowedTools 白名单只暴露本角色需要的工具。
+ * 各 Agent 的工具可见性由 ToolAccessPolicy（声明式「角色→能力→工具」）统一管控，
+ * 越权调用由 AssistantOrchestrator 经 ToolAuditLog 记录；方法级能力归属见各 @Tool 注释。
  */
 public class AgentToolkit {
 

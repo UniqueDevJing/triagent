@@ -1,6 +1,7 @@
 package com.health.web.assistant.agent;
 
 import com.health.web.assistant.config.AssistantConfig;
+import com.health.web.assistant.tool.ToolAccessPolicy;
 import org.springframework.stereotype.Component;
 
 import java.util.EnumMap;
@@ -10,20 +11,23 @@ import java.util.Set;
 /**
  * Agent 注册表 + 规则路由。
  * 关键词命中 → 目标 Agent（先预约、再报告，默认分诊）。规则可替换为 LLM 路由（后续增强）。
+ * 各 Agent 的工具白名单来自 {@link ToolAccessPolicy}（声明式「角色→能力→工具」唯一权威来源）。
  */
 @Component
 public class AgentRegistry {
 
     private final Map<AgentType, AgentDefinition> definitions = new EnumMap<>(AgentType.class);
+    private final ToolAccessPolicy toolPolicy;
 
     private static final Set<String> SCHEDULER_KEYWORDS = Set.of("预约", "挂号", "排班", "改期", "取消预约", "订体检", "安排体检", "健康体检", "约医生");
     private static final Set<String> REPORT_KEYWORDS = Set.of("报告", "体检结果", "指标", "化验单", "解读", "结论", "风险等级");
 
-    public AgentRegistry() {
+    public AgentRegistry(ToolAccessPolicy toolPolicy) {
+        this.toolPolicy = toolPolicy;
         definitions.put(AgentType.TRIAGE, new AgentDefinition(
                 AgentType.TRIAGE,
                 AssistantConfig.SYSTEM_PROMPT,
-                Set.of("searchDiseases", "searchMembers")));
+                toolPolicy.allowedTools(AgentType.TRIAGE)));
 
         definitions.put(AgentType.REPORT, new AgentDefinition(
                 AgentType.REPORT,
@@ -34,7 +38,7 @@ public class AgentRegistry {
                 3. 用通俗语言解释医学术语；指出需要复查/就医的红线项。
                 4. 不给出确诊结论；结尾提示：本解读仅供参考，不替代医生诊断。
                 """,
-                Set.of("searchMembers", "getMemberAssessments", "searchDiseases")));
+                toolPolicy.allowedTools(AgentType.REPORT)));
 
         definitions.put(AgentType.SCHEDULER, new AgentDefinition(
                 AgentType.SCHEDULER,
@@ -45,7 +49,7 @@ public class AgentRegistry {
                 3. 幂等纪律：同一会员+科室+日期+意图只调用一次 createPreOrder，绝不重复下单；用户改期应基于新的日期重新预占并说明。
                 4. 不承诺具体医生/具体时间点，只做"科室+日期"预占；涉及急症（胸痛/卒中征兆等）请直接建议急诊并说明本预约不含急诊通道。
                 """,
-                Set.of("searchMembers", "createPreOrder")));
+                toolPolicy.allowedTools(AgentType.SCHEDULER)));
     }
 
     /** 规则路由：消息 → AgentDefinition */

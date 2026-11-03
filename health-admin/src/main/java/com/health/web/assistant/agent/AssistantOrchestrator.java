@@ -15,6 +15,8 @@ import com.health.web.assistant.model.SseEvent;
 import com.health.web.assistant.model.TriageResult;
 import com.health.web.assistant.service.PreOrderService;
 import com.health.web.assistant.tool.AgentToolkit;
+import com.health.web.assistant.tool.ToolAccessPolicy;
+import com.health.web.assistant.tool.ToolAuditLog;
 import com.health.web.assistant.tool.ToolEventPublisher;
 import com.health.web.assistant.tool.TriageTools;
 import org.slf4j.Logger;
@@ -55,6 +57,8 @@ public class AssistantOrchestrator {
     private final AgentSessionState sessionState;
     private final SessionFactStore sessionFactStore;
     private final List<AgentAdvice> advices;
+    private final ToolAccessPolicy toolPolicy;
+    private final ToolAuditLog toolAudit;
 
     /** 结构化分诊输出绑定器（BeanOutputConverter 负责 JSON schema 解析/校验） */
     private final BeanOutputConverter<TriageResult> triageConverter = new BeanOutputConverter<>(TriageResult.class);
@@ -70,7 +74,9 @@ public class AssistantOrchestrator {
                                  SessionMemoryStore memoryStore,
                                  AgentSessionState sessionState,
                                  SessionFactStore sessionFactStore,
-                                 List<AgentAdvice> advices) {
+                                 List<AgentAdvice> advices,
+                                 ToolAccessPolicy toolPolicy,
+                                 ToolAuditLog toolAudit) {
         this.chatClient = chatClient;
         this.agentRegistry = agentRegistry;
         this.stateMachine = stateMachine;
@@ -83,6 +89,8 @@ public class AssistantOrchestrator {
         this.advices = advices.stream()
                 .sorted(Comparator.comparingInt(AgentAdvice::getOrder))
                 .toList();
+        this.toolPolicy = toolPolicy;
+        this.toolAudit = toolAudit;
     }
 
     public Flux<SseEvent> chat(ChatRequest req) {
@@ -202,7 +210,12 @@ public class AssistantOrchestrator {
         ToolEventPublisher toolEvents = new ToolEventPublisher(toolSink);
         AgentToolkit toolkit = new AgentToolkit(userId, toolEvents, triageTools, assessmentRecordMapper, preOrderService);
         ToolCallback[] callbacks = Arrays.stream(ToolCallbacks.from(toolkit))
-                .filter(cb -> agent.getAllowedTools().contains(cb.getToolDefinition().name()))
+                .peek(cb -> {
+                    String name = cb.getToolDefinition().name();
+                    boolean allowed = toolPolicy.isAllowed(agent.getType(), name);
+                    toolAudit.record(req.getSessionId(), userId, agent.getType(), name, allowed);
+                })
+                .filter(cb -> toolPolicy.isAllowed(agent.getType(), cb.getToolDefinition().name()))
                 .toArray(ToolCallback[]::new);
 
         String userPrompt = (areq.getRagContext() != null ? areq.getRagContext() + "\n" : "")
