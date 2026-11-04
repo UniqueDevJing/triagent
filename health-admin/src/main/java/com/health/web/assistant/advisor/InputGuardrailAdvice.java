@@ -20,7 +20,7 @@ public class InputGuardrailAdvice implements AgentAdvice {
 
     /** 处方类诱导（输入护栏）：用户主动要求开药 / 开处方 */
     private static final Pattern PRESCRIPTION_INPUT = Pattern.compile(
-            "(开(个|一|了)?(处)?方|开(点|些|个)?药|配(点|些)?药|抓药|拿(点|些)?药|自己买药|自行买药)");
+            "(开(个|一|了)?(处)?方|开(点|些|个)?药|配(点|些)?药|抓(点|些|个)?药|拿(点|些)?药|自己买药|自行买药)");
 
     /**
      * 处方类输出（输出护栏）：模型直接给出用药剂量 / 开具处方。
