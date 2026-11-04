@@ -10,6 +10,37 @@ jobs:
   backend:
     name: Backend · compile & unit tests
     runs-on: ubuntu-latest
+    services:
+      # Round 4 集成层：真实 MySQL / Redis。集成测试在没有端点时会 skip，
+      # 所以 CI 必须提供；IntegrationEnvGuardTest 会在 CI=true 且端点缺失时直接失败，
+      # 防止"配置漏写 -> 全 skip -> 假绿"。
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: triagent_it
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      IT_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/triagent_it?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      IT_MYSQL_USER: root
+      IT_MYSQL_PASSWORD: root
+      IT_REDIS_HOST: 127.0.0.1
+      IT_REDIS_PORT: '6379'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -23,7 +54,7 @@ jobs:
         # 会去中央仓库找而失败（2026-09-06 的 CI 红叉即此原因）。
         # 先 install 一次，后续 test 便可直接复用本地仓库中的模块 jar。
         run: mvn -q -B -pl health-admin -am install -DskipTests
-      - name: Unit tests (32 cases · state machine / idempotency / routing)
+      - name: Unit + integration tests (unit / contract / integration)
         run: mvn -q -B -pl health-admin -am test
 
   frontend:
