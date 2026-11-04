@@ -17,6 +17,7 @@
         <module>health-common</module>
         <module>health-system</module>
         <module>health-framework</module>
+        <module>agent-core</module>
         <module>health-admin</module>
     </modules>
 
@@ -58,6 +59,11 @@
             <dependency>
                 <groupId>com.health</groupId>
                 <artifactId>health-framework</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.health</groupId>
+                <artifactId>agent-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <!-- MyBatis-Plus -->

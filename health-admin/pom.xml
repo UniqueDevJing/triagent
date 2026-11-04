@@ -16,6 +16,10 @@
             <artifactId>health-framework</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.health</groupId>
+            <artifactId>agent-core</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>druid-spring-boot-3-starter</artifactId>
         </dependency>

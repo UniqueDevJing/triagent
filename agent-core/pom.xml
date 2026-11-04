@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.health</groupId>
+        <artifactId>health-management-system</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>agent-core</artifactId>
+    <packaging>jar</packaging>
+    <name>Agent Core (triage kernel)</name>
+    <description>
+        可复用 Agent 内核：确定性分诊状态机 + 声明式工具权限/越权拦截/审计
+        + 事实总线 + 事件流。独立于 RuoYi 骨架（不依赖 MyBatis / Redis / Sa-Token /
+        Reactor / Spring-AI），主工程 health-admin 仅做接入。
+    </description>
+
+    <dependencies>
+        <!-- 唯一框架依赖：Spring 容器注解（@Component/@Value），不含 RuoYi 业务脚手架 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- 单测：JUnit5 + AssertJ -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
