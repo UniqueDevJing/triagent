@@ -15,6 +15,7 @@ import com.health.web.assistant.model.SseEvent;
 import com.health.web.assistant.model.TriageResult;
 import com.health.web.assistant.service.PreOrderService;
 import com.health.web.assistant.tool.AgentToolkit;
+import com.health.web.assistant.tool.BudgetGuard;
 import com.health.web.assistant.tool.DecisionLog;
 import com.health.web.assistant.tool.DecisionRecord;
 import com.health.web.assistant.tool.ToolAccessGuard;
@@ -62,6 +63,7 @@ public class AssistantOrchestrator {
     private final ToolAccessPolicy toolPolicy;
     private final ToolAccessGuard toolGuard;
     private final DecisionLog decisionLog;
+    private final BudgetGuard budgetGuard;
 
     /** 结构化分诊输出绑定器（BeanOutputConverter 负责 JSON schema 解析/校验） */
     private final BeanOutputConverter<TriageResult> triageConverter = new BeanOutputConverter<>(TriageResult.class);
@@ -80,7 +82,8 @@ public class AssistantOrchestrator {
                                  List<AgentAdvice> advices,
                                  ToolAccessPolicy toolPolicy,
                                  ToolAccessGuard toolGuard,
-                                 DecisionLog decisionLog) {
+                                 DecisionLog decisionLog,
+                                 BudgetGuard budgetGuard) {
         this.chatClient = chatClient;
         this.agentRegistry = agentRegistry;
         this.stateMachine = stateMachine;
@@ -96,6 +99,7 @@ public class AssistantOrchestrator {
         this.toolPolicy = toolPolicy;
         this.toolGuard = toolGuard;
         this.decisionLog = decisionLog;
+        this.budgetGuard = budgetGuard;
     }
 
     public Flux<SseEvent> chat(ChatRequest req) {
@@ -209,12 +213,27 @@ public class AssistantOrchestrator {
             }
         }
 
+        // —— T5 预算熔断：会话 token 预算耗尽 → 跳过 LLM，降级到确定性规则（0 token 消耗）——
+        if (budgetGuard != null && budgetGuard.tokenExceeded(req.getSessionId())) {
+            String reason = budgetGuard.degradeReason(req.getSessionId());
+            log.warn("[agent] 会话={} 预算熔断：{} → 确定性降级（跳过 LLM）", req.getSessionId(), reason);
+            String fallback = deterministicFallbackAnswer(agent.getType());
+            AgentResponse resp = new AgentResponse();
+            resp.setFullText(fallback);
+            resp.setTurnType("DEGRADED");
+            resp.setElapsedMs(System.currentTimeMillis() - start);
+            completeTurn(capturedReq, resp, req, null,
+                    List.of("budget-token-exceeded"));
+            return Flux.just(SseEvent.done(fallback, null, agent.getDisplayName(), areq.getSources()));
+        }
+
         // —— LLM 路径（PROCEED / REPORT / SCHEDULER）——
         StringBuilder acc = new StringBuilder();
         Sinks.Many<SseEvent> toolSink = Sinks.many().multicast().onBackpressureBuffer();
         ToolEventPublisher toolEvents = new ToolEventPublisher(toolSink);
-        // 每请求构造工具集：携带当前角色与会话，使 ToolAccessGuard 在方法入口做真实越权校验 + 审计
-        AgentToolkit toolkit = new AgentToolkit(toolGuard, agent.getType(), req.getSessionId(),
+        // 每请求构造工具集：携带当前角色与会话，使 ToolAccessGuard 在方法入口做真实越权校验 + 审计；
+        // BudgetGuard 在同一入口做工具调用次数熔断（T5），超限抛 AgentBlockedException 降级。
+        AgentToolkit toolkit = new AgentToolkit(toolGuard, budgetGuard, agent.getType(), req.getSessionId(),
                 userId, toolEvents, triageTools, assessmentRecordMapper, preOrderService);
         // 纵深防御：按声明式策略把越权工具从模型可见列表摘除（模型不会去调），
         // 真实放行/拦截决策与审计由 AgentToolkit 内的 guard.check 在调用时记录。
@@ -262,6 +281,9 @@ public class AssistantOrchestrator {
                     resp.setToolCallCount(toolEvents.getCallCount());
                     resp.setToolResultCount(toolEvents.getResultCount());
                     resp.setElapsedMs(System.currentTimeMillis() - start);
+                    if (budgetGuard != null) {
+                        budgetGuard.recordTokens(req.getSessionId(), full);
+                    }
                     completeTurn(capturedReq, resp, req);
                     return Mono.just(SseEvent.done(resp.getFullText(), resp.getTriage(),
                             agent.getDisplayName(), capturedReq.getSources()));
@@ -422,6 +444,23 @@ public class AssistantOrchestrator {
         resp.setElapsedMs(System.currentTimeMillis() - start);
         completeTurn(areq, resp, req);
         return SseEvent.done(answer, tri, "预约管家", areq.getSources());
+    }
+
+    /**
+     * T5 预算熔断后的确定性降级话术（0 LLM 消耗）：按 Agent 角色给出规则化安全指引，
+     * 明确告知服务受限与替代路径，避免静默截断。
+     */
+    private String deterministicFallbackAnswer(AgentType type) {
+        return switch (type) {
+            case TRIAGE -> "（安全提示）本会话对话量较大，智能分诊已切换为简化模式。"
+                    + "若症状持续或加重，请及时前往医院就诊；出现胸痛、呼吸困难、意识模糊等急重情况，"
+                    + "请立即前往急诊或拨打 120。你也可以开启新会话继续使用完整分诊功能。";
+            case SCHEDULER -> "（预约助手）本会话操作量较大，预约服务已切换为简化模式，暂时无法代你落单。"
+                    + "请稍后开启新会话重试，或直接联系人工客服/医院挂号平台完成预约。";
+            case REPORT -> "（报告助手）本会话对话量较大，报告解读已切换为简化模式。"
+                    + "关键结论请以医院出具的正式报告与医生意见为准；如需完整解读，请开启新会话重试。";
+            default -> "（系统提示）本会话资源已达上限，已切换为简化模式。请开启新会话继续使用完整功能。";
+        };
     }
 
     /** after 链 + 记忆落库 + 决策日志（T3） */

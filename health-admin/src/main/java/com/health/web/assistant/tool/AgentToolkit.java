@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 public class AgentToolkit {
 
     private final ToolAccessGuard guard;
+    private final BudgetGuard budget;
     private final AgentType role;
     private final String sessionId;
     private final Long userId;
@@ -34,6 +35,7 @@ public class AgentToolkit {
     private final PreOrderService preOrderService;
 
     public AgentToolkit(ToolAccessGuard guard,
+                        BudgetGuard budget,
                         AgentType role,
                         String sessionId,
                         Long userId,
@@ -42,6 +44,7 @@ public class AgentToolkit {
                         AssessmentRecordMapper assessmentRecordMapper,
                         PreOrderService preOrderService) {
         this.guard = guard;
+        this.budget = budget;
         this.role = role;
         this.sessionId = sessionId;
         this.userId = userId;
@@ -51,9 +54,14 @@ public class AgentToolkit {
         this.preOrderService = preOrderService;
     }
 
-    /** 越权守卫：在工具方法入口校验当前角色授权，越权抛 AgentBlockedException（T2 加固 / 协同 T4 红队） */
+    /** 越权守卫：在工具方法入口校验当前角色授权，越权抛 AgentBlockedException（T2 加固 / 协同 T4 红队）；
+     *  预算熔断：同一会话工具调用次数超上限同样在此拦截（T5，超限降级到确定性规则） */
     private void ensureAllowed(String toolName) {
         guard.check(role, toolName, sessionId, userId);
+        if (budget != null && !budget.tryConsumeToolCall(sessionId)) {
+            throw new com.health.web.assistant.advisor.AgentBlockedException(
+                    "本会话工具调用次数已达上限（预算熔断），已降级为确定性处理");
+        }
     }
 
     @Tool(name = "searchDiseases", description = "按症状关键词搜索疾病库（病名/症状/病因），返回候选疾病供分诊参考")

@@ -44,3 +44,14 @@ knife4j:
 health:
   data-init:
     enabled: true
+
+# Agent 治理配置（T2 审计落盘 / T3 决策日志 / T5 预算熔断）
+assistant:
+  # 审计与决策日志 JSONL 落盘路径（留空则仅内存环形窗口，不落盘）
+  tool-audit-log: ${ASSISTANT_TOOL_AUDIT_LOG:}
+  decision-log: ${ASSISTANT_DECISION_LOG:}
+  # 单会话成本/延迟预算（T5）：超限后工具调用被熔断、LLM 路径降级为确定性规则
+  budget:
+    enabled: true
+    max-tool-calls: 20        # 单会话工具调用次数上限
+    max-tokens: 60000         # 单会话 token 预算上限（输出侧 chars/2 估算）
