@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AssistantOrchestratorDecideAgentTest {
 
     private final AssistantOrchestrator orchestrator =
-            new AssistantOrchestrator(null, null, null, null, null, null, null, null, null, List.of(), null, null);
+            new AssistantOrchestrator(null, null, null, null, null, null, null, null, null, List.of(), null, null, null);
 
     @Test
     @DisplayName("无会话态：按消息字面路由")

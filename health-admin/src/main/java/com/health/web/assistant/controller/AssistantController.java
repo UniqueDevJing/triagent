@@ -8,6 +8,7 @@ import com.health.web.assistant.model.ChatRequest;
 import com.health.web.assistant.model.SseEvent;
 import com.health.web.assistant.service.AgentMetricsService;
 import com.health.web.assistant.service.PreOrderService;
+import com.health.web.assistant.tool.DecisionLog;
 import com.health.web.assistant.tool.ToolAuditLog;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,15 +40,18 @@ public class AssistantController extends BaseController {
     private final PreOrderService preOrderService;
     private final AgentMetricsService metrics;
     private final ToolAuditLog toolAudit;
+    private final DecisionLog decisionLog;
 
     public AssistantController(AssistantOrchestrator orchestrator,
                                PreOrderService preOrderService,
                                AgentMetricsService metrics,
-                               ToolAuditLog toolAudit) {
+                               ToolAuditLog toolAudit,
+                               DecisionLog decisionLog) {
         this.orchestrator = orchestrator;
         this.preOrderService = preOrderService;
         this.metrics = metrics;
         this.toolAudit = toolAudit;
+        this.decisionLog = decisionLog;
     }
 
     @Operation(summary = "智能分诊助手（SSE 流式）")
@@ -115,5 +119,13 @@ public class AssistantController extends BaseController {
     public Object toolAudit(@RequestParam(required = false) String sessionId,
                             @RequestParam(defaultValue = "100") int limit) {
         return success(toolAudit.query(sessionId, limit));
+    }
+
+    @Operation(summary = "决策日志查询（T3：最近 N 条决策链，可选按会话过滤；sessionId 精确匹配时返回该会话完整重放序列）")
+    @SaCheckLogin
+    @GetMapping("/decision-log")
+    public Object decisionLog(@RequestParam(required = false) String sessionId,
+                              @RequestParam(defaultValue = "100") int limit) {
+        return success(decisionLog.query(sessionId, limit));
     }
 }

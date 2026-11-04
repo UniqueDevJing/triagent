@@ -15,6 +15,8 @@ import com.health.web.assistant.model.SseEvent;
 import com.health.web.assistant.model.TriageResult;
 import com.health.web.assistant.service.PreOrderService;
 import com.health.web.assistant.tool.AgentToolkit;
+import com.health.web.assistant.tool.DecisionLog;
+import com.health.web.assistant.tool.DecisionRecord;
 import com.health.web.assistant.tool.ToolAccessGuard;
 import com.health.web.assistant.tool.ToolAccessPolicy;
 import com.health.web.assistant.tool.ToolEventPublisher;
@@ -59,6 +61,7 @@ public class AssistantOrchestrator {
     private final List<AgentAdvice> advices;
     private final ToolAccessPolicy toolPolicy;
     private final ToolAccessGuard toolGuard;
+    private final DecisionLog decisionLog;
 
     /** 结构化分诊输出绑定器（BeanOutputConverter 负责 JSON schema 解析/校验） */
     private final BeanOutputConverter<TriageResult> triageConverter = new BeanOutputConverter<>(TriageResult.class);
@@ -76,7 +79,8 @@ public class AssistantOrchestrator {
                                  SessionFactStore sessionFactStore,
                                  List<AgentAdvice> advices,
                                  ToolAccessPolicy toolPolicy,
-                                 ToolAccessGuard toolGuard) {
+                                 ToolAccessGuard toolGuard,
+                                 DecisionLog decisionLog) {
         this.chatClient = chatClient;
         this.agentRegistry = agentRegistry;
         this.stateMachine = stateMachine;
@@ -91,6 +95,7 @@ public class AssistantOrchestrator {
                 .toList();
         this.toolPolicy = toolPolicy;
         this.toolGuard = toolGuard;
+        this.decisionLog = decisionLog;
     }
 
     public Flux<SseEvent> chat(ChatRequest req) {
@@ -182,7 +187,7 @@ public class AssistantOrchestrator {
                 resp.setTriage(tri);
                 resp.setTurnType("EMERGENCY");
                 resp.setElapsedMs(System.currentTimeMillis() - start);
-                completeTurn(capturedReq, resp, req);
+                completeTurn(capturedReq, resp, req, d.redFlagWords(), List.of("red-flag-short-circuit"));
                 if (supervisorPlanned) {
                     return Flux.concat(
                             Flux.just(SseEvent.plan("TRIAGE_FIRST", "预约请求含急症红旗 → 应急分诊优先")),
@@ -419,8 +424,14 @@ public class AssistantOrchestrator {
         return SseEvent.done(answer, tri, "预约管家", areq.getSources());
     }
 
-    /** after 链 + 记忆落库 */
+    /** after 链 + 记忆落库 + 决策日志（T3） */
     private void completeTurn(AgentRequest request, AgentResponse response, ChatRequest chat) {
+        completeTurn(request, response, chat, null, null);
+    }
+
+    /** 带「输入特征/规则命中」的完整收尾：决策日志记录本轮最终裁决，供会话重放与审计复盘 */
+    private void completeTurn(AgentRequest request, AgentResponse response, ChatRequest chat,
+                              List<String> redFlags, List<String> ruleHits) {
         for (AgentAdvice a : advices) {
             try {
                 a.after(request, response);
@@ -429,6 +440,28 @@ public class AssistantOrchestrator {
             }
         }
         memoryStore.append(chat.getSessionId(), chat.getMessage(), response.getFullText());
+        if (decisionLog != null) {
+            try {
+                TriageResult tri = response.getTriage();
+                decisionLog.record(DecisionRecord.builder()
+                        .sessionId(chat.getSessionId())
+                        .agentType(request.getAgentName())
+                        .turnType(response.getTurnType())
+                        .message(chat.getMessage())
+                        .redFlags(redFlags)
+                        .ruleHits(ruleHits)
+                        .finalText(response.getFullText())
+                        .urgency(tri == null ? null : tri.getUrgency())
+                        .departments(tri == null ? null : tri.getDepartments())
+                        .blockedReason(response.isBlocked() ? response.getBlockReason() : null)
+                        .elapsedMs(response.getElapsedMs())
+                        .toolCalls(response.getToolCallCount())
+                        .toolResults(response.getToolResultCount())
+                        .build());
+            } catch (Exception e) {
+                log.warn("[agent] 决策日志记录失败（忽略，不影响主流程）: {}", e.getMessage());
+            }
+        }
     }
 
     private String buildPrompt(String message, String history) {
