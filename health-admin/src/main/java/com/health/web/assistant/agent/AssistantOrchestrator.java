@@ -15,8 +15,8 @@ import com.health.web.assistant.model.SseEvent;
 import com.health.web.assistant.model.TriageResult;
 import com.health.web.assistant.service.PreOrderService;
 import com.health.web.assistant.tool.AgentToolkit;
+import com.health.web.assistant.tool.ToolAccessGuard;
 import com.health.web.assistant.tool.ToolAccessPolicy;
-import com.health.web.assistant.tool.ToolAuditLog;
 import com.health.web.assistant.tool.ToolEventPublisher;
 import com.health.web.assistant.tool.TriageTools;
 import org.slf4j.Logger;
@@ -58,7 +58,7 @@ public class AssistantOrchestrator {
     private final SessionFactStore sessionFactStore;
     private final List<AgentAdvice> advices;
     private final ToolAccessPolicy toolPolicy;
-    private final ToolAuditLog toolAudit;
+    private final ToolAccessGuard toolGuard;
 
     /** 结构化分诊输出绑定器（BeanOutputConverter 负责 JSON schema 解析/校验） */
     private final BeanOutputConverter<TriageResult> triageConverter = new BeanOutputConverter<>(TriageResult.class);
@@ -76,7 +76,7 @@ public class AssistantOrchestrator {
                                  SessionFactStore sessionFactStore,
                                  List<AgentAdvice> advices,
                                  ToolAccessPolicy toolPolicy,
-                                 ToolAuditLog toolAudit) {
+                                 ToolAccessGuard toolGuard) {
         this.chatClient = chatClient;
         this.agentRegistry = agentRegistry;
         this.stateMachine = stateMachine;
@@ -90,7 +90,7 @@ public class AssistantOrchestrator {
                 .sorted(Comparator.comparingInt(AgentAdvice::getOrder))
                 .toList();
         this.toolPolicy = toolPolicy;
-        this.toolAudit = toolAudit;
+        this.toolGuard = toolGuard;
     }
 
     public Flux<SseEvent> chat(ChatRequest req) {
@@ -208,13 +208,12 @@ public class AssistantOrchestrator {
         StringBuilder acc = new StringBuilder();
         Sinks.Many<SseEvent> toolSink = Sinks.many().multicast().onBackpressureBuffer();
         ToolEventPublisher toolEvents = new ToolEventPublisher(toolSink);
-        AgentToolkit toolkit = new AgentToolkit(userId, toolEvents, triageTools, assessmentRecordMapper, preOrderService);
+        // 每请求构造工具集：携带当前角色与会话，使 ToolAccessGuard 在方法入口做真实越权校验 + 审计
+        AgentToolkit toolkit = new AgentToolkit(toolGuard, agent.getType(), req.getSessionId(),
+                userId, toolEvents, triageTools, assessmentRecordMapper, preOrderService);
+        // 纵深防御：按声明式策略把越权工具从模型可见列表摘除（模型不会去调），
+        // 真实放行/拦截决策与审计由 AgentToolkit 内的 guard.check 在调用时记录。
         ToolCallback[] callbacks = Arrays.stream(ToolCallbacks.from(toolkit))
-                .peek(cb -> {
-                    String name = cb.getToolDefinition().name();
-                    boolean allowed = toolPolicy.isAllowed(agent.getType(), name);
-                    toolAudit.record(req.getSessionId(), userId, agent.getType(), name, allowed);
-                })
                 .filter(cb -> toolPolicy.isAllowed(agent.getType(), cb.getToolDefinition().name()))
                 .toArray(ToolCallback[]::new);
 

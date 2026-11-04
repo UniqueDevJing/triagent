@@ -8,6 +8,7 @@ import com.health.web.assistant.model.ChatRequest;
 import com.health.web.assistant.model.SseEvent;
 import com.health.web.assistant.service.AgentMetricsService;
 import com.health.web.assistant.service.PreOrderService;
+import com.health.web.assistant.tool.ToolAuditLog;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.Disposable;
@@ -36,13 +38,16 @@ public class AssistantController extends BaseController {
     private final AssistantOrchestrator orchestrator;
     private final PreOrderService preOrderService;
     private final AgentMetricsService metrics;
+    private final ToolAuditLog toolAudit;
 
     public AssistantController(AssistantOrchestrator orchestrator,
                                PreOrderService preOrderService,
-                               AgentMetricsService metrics) {
+                               AgentMetricsService metrics,
+                               ToolAuditLog toolAudit) {
         this.orchestrator = orchestrator;
         this.preOrderService = preOrderService;
         this.metrics = metrics;
+        this.toolAudit = toolAudit;
     }
 
     @Operation(summary = "智能分诊助手（SSE 流式）")
@@ -102,5 +107,13 @@ public class AssistantController extends BaseController {
         } catch (IllegalArgumentException ex) {
             return error(ex.getMessage());
         }
+    }
+
+    @Operation(summary = "工具越权审计日志查询（最近 N 条，可选按会话过滤）")
+    @SaCheckLogin
+    @GetMapping("/tool-audit")
+    public Object toolAudit(@RequestParam(required = false) String sessionId,
+                            @RequestParam(defaultValue = "100") int limit) {
+        return success(toolAudit.query(sessionId, limit));
     }
 }

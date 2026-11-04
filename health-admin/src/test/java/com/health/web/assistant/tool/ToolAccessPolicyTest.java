@@ -4,6 +4,7 @@ import com.health.web.assistant.agent.AgentType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,16 +54,26 @@ class ToolAccessPolicyTest {
     }
 
     @Test
-    @DisplayName("越权拦截率：对所有越权尝试，isAllowed 一律拒绝（100% 拦截）")
-    void denialRateIsFullForOutOfPolicy() {
-        for (AgentType role : AgentType.values()) {
-            Set<String> allowed = policy.allowedTools(role);
-            for (String tool : ALL_TOOLS) {
-                if (!allowed.contains(tool)) {
-                    assertThat(policy.isAllowed(role, tool))
-                            .as("角色 %s 不应拥有工具 %s", role, tool)
-                            .isFalse();
-                }
+    @DisplayName("越权拦截率：硬编码 3 角色 × 4 工具期望矩阵（12 断言，不依赖 allowedTools 自证）")
+    void roleToolMatrixIsHardcoded() {
+        // 角色 -> (工具 -> 期望授权)
+        Map<AgentType, Map<String, Boolean>> expect = Map.of(
+                AgentType.TRIAGE, Map.of(
+                        "searchDiseases", true, "searchMembers", true,
+                        "getMemberAssessments", false, "createPreOrder", false),
+                AgentType.REPORT, Map.of(
+                        "searchDiseases", true, "searchMembers", true,
+                        "getMemberAssessments", true, "createPreOrder", false),
+                AgentType.SCHEDULER, Map.of(
+                        "searchDiseases", false, "searchMembers", true,
+                        "getMemberAssessments", false, "createPreOrder", true)
+        );
+        for (var roleEntry : expect.entrySet()) {
+            AgentType role = roleEntry.getKey();
+            for (var toolEntry : roleEntry.getValue().entrySet()) {
+                assertThat(policy.isAllowed(role, toolEntry.getKey()))
+                        .as("角色 %s 工具 %s 授权期望 %s", role, toolEntry.getKey(), toolEntry.getValue())
+                        .isEqualTo(toolEntry.getValue());
             }
         }
     }
