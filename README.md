@@ -27,10 +27,17 @@
 
 本仓库是在一套成熟健康管理平台之上**叠加**的多 Agent 编排层，二者边界清晰、职责分离：
 
-- **AI 编排层（约 1.5k 行，占源码约 6%）**：Supervisor 规划、医疗安全状态机、SessionFactStore 事实总线、AgentToolkit 工具权限、AgentMetricsService、TracingFilter 等，集中在 `health-server` 的 agent / orchestrator 相关包。这是本项目的差异点与可验证核心。
-- **平台骨架（约占 94%）**：会员、预约、评估、干预、知识库、后台管理等，来自标准健康管理平台实现，非本项目重点。
+- **`agent-core` 可复用内核（独立 Maven 模块，20 个主文件 / 约 1.3k 行）**：确定性分诊状态机、
+  声明式工具权限（角色→能力→工具）+ 越权拦截 + 审计、事实总线（FactBus）、事件流 DTO、
+  决策日志与重放、预算熔断。**仅依赖 `spring-context` + `slf4j-api` 两个包**——
+  不依赖 RuoYi / MyBatis / Redis / Sa-Token / Reactor / Spring-AI，
+  主工程 `health-admin` 经 Maven 依赖接入，`@ComponentScan` 自动接管，零装配代码。
+  这一步把"AI 部分埋在脚手架里"变成了"**一个可复用内核 + 一个业务接入**"。
+- **业务编排层（health-admin）**：Supervisor 规划、AgentRegistry 路由、Advisor 链、
+  AgentToolkit（@Tool 工具集 + 预算熔断入口）、AgentMetricsService、SSE 端点。
+- **平台骨架**：会员、预约、评估、干预、知识库、后台管理等，来自标准健康管理平台实现，非本项目重点。
 
-> 设计取舍：平台能力直接复用而非重造，把工时集中在"多 Agent 编排 + 医疗安全"这一可验证的差异点上。编排层与骨架通过明确接口解耦，后续计划抽为独立 `agent-core` 模块（见 [演进里程碑](#演进里程碑)）。
+> 设计取舍：平台能力直接复用而非重造，把工时集中在"多 Agent 编排 + 医疗安全"这一可验证的差异点上。
 
 ---
 
@@ -60,8 +67,16 @@
 | 6 | **预约两步确认 + 幂等**| Agent 只落 PENDING 预订单（sha256 幂等键 + Redis 预占 + DB 唯一索引兜底），页面确认后转 CONFIRMED |
 | 7 | **可观测**| 每轮耗时 / turnType / 工具次数 / 紧急度分布 / 护栏命中，`/metrics` 聚合近 500 轮；HTTP 入口新增 `X-Trace-Id` 响应头，与 Agent 指标互补形成「入口延迟 + 内部编排」完整视图 |
 | 8 | **结构化输出**| `BeanOutputConverter(TriageResult)` + 提示词内嵌 JSON Schema + 解析失败自动重试，输出稳定 |
+| 9 | **真实越权拦截 + 审计**| `ToolAccessGuard` 在每个 @Tool 方法入口校验角色授权，越权抛异常并**始终**记入审计；审计双写本地 JSONL（`assistant.tool-audit-log`），`GET /api/v1/assistant/tool-audit` 只读可查 |
+| 10 | **决策日志与重放**| 每轮决策的输入特征 / 红旗命中 / 规则 / 最终裁决落 `DecisionLog`（环形窗口 + JSONL），按会话重放一致率 100%；`GET /api/v1/assistant/decision-log` 可查 |
+| 11 | **红队对抗评测**| 四维度攻击（否定句降级 / 矛盾症状 / 急症诱导降级 / 诱导越权开处方）32 条断言进 CI；配套加固：矛盾症状转澄清、急诊 override 需无红旗、处方输入+输出双拦截 |
+| 12 | **预算熔断与确定性降级**| 单会话工具调用次数 + token（chars/2 估算）双上限；LLM 超限跳过模型、按角色返回确定性安全指引（`turnType=DEGRADED`），熔断数可观测 |
 
 **量化评估（30 例 golden set + LLM-as-Judge 双轨裁判，真实 DeepSeek）**：紧急度 **0.88**· 科室命中 **28/29**· 规则综合 **9.24 / 10**· LLM 裁判安全性 **29/29 pass**· 危险方向误判（判轻）**0 例**· 确定性路径 **6–24ms（0 LLM 调用）**vs LLM 路径均值 5.3s。逐例数据与裁判意见见 [测试数据报告](docs/agent/测试数据报告.md) / [评估报告-LLM裁判](docs/agent/评估报告-LLM裁判.md) / [评估报告](docs/agent/评估报告.md)。
+
+**红队回归（T4，安全评测体系）**：`docs/agent/红队评测报告.md` + `scripts/redteam_set.json`，
+四维度对抗用例 32 条断言随 `mvn test` 进 CI（`RedTeamSafetyTest`），通过率即安全闸门——
+加固后的真实拦截路径（T2）让每条 deny 都可观测、可审计、可单测。
 
 ---
 
@@ -110,6 +125,8 @@ flowchart LR
 | POST | `/api/v1/assistant/chat` | Agent 流式对话（SSE） | Sa-Token |
 | POST | `/api/v1/assistant/preorders/{id}/confirm` | 确认预订单（两步确认第二步） | Sa-Token |
 | GET | `/api/v1/assistant/metrics` | Agent 运行指标（近 500 轮聚合） | Sa-Token |
+| GET | `/api/v1/assistant/tool-audit` | 工具越权审计查询（可按会话过滤，T2） | Sa-Token |
+| GET | `/api/v1/assistant/decision-log` | 决策日志查询（sessionId 精确匹配时返回完整重放序列，T3） | Sa-Token |
 
 ---
 
@@ -165,23 +182,35 @@ cd health-web && npm install && npm run dev
 ## 项目结构
 
 ```
+├── agent-core/            可复用 Agent 内核（独立 Maven 模块，仅依赖 spring-context + slf4j-api）
+│   └── com.health.web.assistant/
+│       ├── agent/         SymptomStateMachine（红旗短路/矛盾澄清/override 安全）· AgentRegistry 类型
+│       ├── tool/          ToolAccessPolicy（声明式角色→工具矩阵）· ToolAccessGuard（真实拦截）
+│       │                  · ToolAuditLog（JSONL 落盘）· DecisionLog/DecisionRecord（T3）
+│       │                  · BudgetGuard（单会话工具次数 + token 预算熔断，T5）
+│       ├── memory/        SessionFactStore · InMemorySessionFactStore（复用 FactBus）· FactBus
+│       ├── model/         TriageResult · AgentResponse · ChatRequest · SseEvent 等事件流 DTO
+│       ├── advisor/       AgentBlockedException
+│       ├── rag/           KnowledgeDoc · KnowledgeRetriever 接口
+│       └── README.md      模块边界与接入方式
 ├── health-common/         公共：AjaxResult、BaseEntity、注解、异常
 ├── health-system/         业务实体 + Mapper（含 AgentPreOrder）
 ├── health-framework/      Sa-Token 配置、全局异常、SSE 工具
-├── health-admin/           主启动模块（8080），Agent 编排层
+├── health-admin/           主启动模块（8080），业务编排层（接入 agent-core）
 │   └── com.health.web.assistant/
-│       ├── controller/    SSE chat / 预订单确认 / metrics
-│       ├── agent/         AssistantOrchestrator · AgentRegistry · SymptomStateMachine
+│       ├── controller/    SSE chat / 预订单确认 / metrics / tool-audit / decision-log
+│       ├── agent/         AssistantOrchestrator（决策日志 + 预算熔断接线）· AgentRegistry
 │       ├── advisor/       Logging(0) → InputGuardrail(10) → Rag(20) → OutputGuardrail(80) → Audit(100)
-│       ├── tool/          AgentToolkit(@Tool) · ToolEventPublisher
-│       ├── rag/           KnowledgeRetriever（MySQL 混合检索，预留向量接口）
-│       ├── memory/        SessionMemoryStore · AgentSessionState · SessionFactStore
+│       ├── tool/          AgentToolkit(@Tool + 预算熔断入口) · ToolEventPublisher · TriageTools
+│       ├── rag/           MySQL 混合检索实现（实现 core 的 KnowledgeRetriever 接口）
+│       ├── memory/        RedisSessionFactStore / AgentSessionState / SessionMemoryStore
 │       ├── service/       PreOrderService（幂等） · AgentMetricsService
-│       └── config/        AssistantConfig（ChatClient + 提示词 + JSON Schema）
+│       └── config/        AssistantMemoryConfig · AssistantConfig（ChatClient + 提示词）
 ├── health-web/            Vue 3 前端（views/assistant/AssistantChat.vue 透明推理页）
 ├── sql/init.sql           权威建表脚本（含 agent_preorder）
-├── docs/agent/            框架设计 · 实施计划 · 评估方案 · 评估报告 · 功能验证报告
-└── pom.xml                Spring AI BOM 1.0.0
+├── scripts/redteam_set.json  红队对抗评测集（四维度攻击 + 安全基线）
+├── docs/agent/            框架设计 · 评估报告 · 红队评测报告 · 测试数据报告
+└── pom.xml                Spring AI BOM 1.0.0 + agent-core 模块
 ```
 
 ---
@@ -193,7 +222,9 @@ cd health-web && npm install && npm run dev
 - **Phase 3**RAG 溯源 + 分诊状态机
 - **Phase 4**可观测指标 + 前端透明推理页 + G1–G10 评估
 - **Phase 5**会话连续性路由 + 多 Agent 事实协作 + Supervisor 规划 + `plan` 事件可视化
-- **Roadmap**向量检索（pgvector/Milvus）· Supervisor 全语义规划（LLM 拆子任务）· 单元测试补齐 · Docker Compose 一键起
+- **Phase 6（治理加固，T1–T5）**：`agent-core` 独立内核模块 · 真实越权拦截 + 审计 JSONL 落盘 ·
+  决策日志与会话重放 · 红队四维度对抗评测进 CI · 单会话预算熔断与确定性降级
+- **Roadmap**向量检索（pgvector/Milvus）· Supervisor 全语义规划（LLM 拆子任务）· Docker Compose 一键起
 
 ---
 
