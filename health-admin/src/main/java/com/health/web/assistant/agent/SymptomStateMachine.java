@@ -124,6 +124,42 @@ public class SymptomStateMachine {
             "腹泻", "便秘", "麻木", "疼痛", "心悸", "心慌", "咳嗽", "咳痰", "皮疹", "瘙痒");
 
     /** 判定前剥除标点与空白，让「无。」「没有！」这类带标点的短应答也能命中规则 1 */
+    /**
+     * 用户澄清「急诊已排除 / 看过急诊」时，预约流程是否可放行并清除急诊事实。
+     * <p><b>关键安全约束：仅当当前消息本身不再含任何红旗征象时才允许清除。</b>
+     * 否则攻击者可用「我胸痛，但看过急诊了」这类「红旗词 + override 词」组合绕过应急
+     * 分诊、把危急症状当普通预约处理（红队维度③：急症被诱导降级）。
+     */
+    private static final List<String> EMERGENCY_OVERRIDE_CUES = List.of(
+            "不是急症", "排除", "看过急诊", "急诊已排", "没事了", "虚惊", "检查过了", "已就医", "已经去急诊");
+
+    public boolean emergencyOverrideClearsFact(String msg) {
+        if (msg == null || msg.isBlank()) {
+            return false;
+        }
+        boolean hasOverride = EMERGENCY_OVERRIDE_CUES.stream().anyMatch(msg::contains);
+        return hasOverride && redFlagsIn(msg).isEmpty();
+    }
+
+    /**
+     * 矛盾症状护栏（红队维度②）：用户既描述具体症状、又自述「没事 / 不用去医院」时，
+     * 不放心交给 LLM 自行决定是否降级，改为强制澄清以确认严重程度。
+     */
+    private static final List<String> CONTRADICTION_CUES = List.of(
+            "没事了", "完全没事", "不用担心", "不用去医院", "不用看医生", "不用就医",
+            "问题不大", "没大碍", "不用管", "不用管它", "不要紧", "不要去医院");
+
+    private boolean hasSymptomSignal(String text) {
+        return BODY_PARTS.stream().anyMatch(text::contains)
+                || INFERRED_BODY.stream().anyMatch(text::contains)
+                || ACCOMPANY.stream().anyMatch(text::contains)
+                || DURATION_PATTERN.matcher(text).find();
+    }
+
+    private boolean claimsNoConcern(String text) {
+        return CONTRADICTION_CUES.stream().anyMatch(text::contains);
+    }
+
     private static final Pattern PUNCT_RE = Pattern.compile("[\\s，。！？、,.!?；;：:]");
 
     private static final int MAX_SESSIONS = 2000;
@@ -203,6 +239,15 @@ public class SymptomStateMachine {
         if (!redHit.isEmpty()) {
             log.info("[state] 会话={} 命中红旗征象 {} → EMERGENCY", sessionId, redHit);
             return Decision.emergency(redHit);
+        }
+
+        // 矛盾症状护栏：已描述症状又自述「无需就医」→ 强制澄清，防止被诱导降级
+        if (hasSymptomSignal(text) && claimsNoConcern(text)) {
+            log.info("[state] 会话={} 命中矛盾症状（症状+自述无需就医）→ CLARIFY", sessionId);
+            return Decision.clarify(
+                    "您既提到身体不适又表示无需就医，为安全起见请确认：症状是否仍在、是否加重？"
+                            + "如出现胸痛、呼吸困难、意识模糊、肢体无力等警示征象，请立即就医或拨打 120。",
+                    List.of("severityConfirm"));
         }
 
         // 2) 采集常规字段（会话内聚合）

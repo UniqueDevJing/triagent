@@ -112,7 +112,7 @@ public class AssistantOrchestrator {
         // 规划为「应急分诊优先」：把本轮到 TRIAGE，由红旗状态机确定性输出 EMERGENCY（0 LLM 调用）。
         // 既往/复诊语境（以前胸痛过、复查）不会触发，避免误伤。
         if (decided == AgentType.SCHEDULER
-                && !hasEmergencyOverride(areq.getMessage())
+                && !stateMachine.emergencyOverrideClearsFact(areq.getMessage())
                 && sessionFactStore.getEmergency(req.getSessionId()) == null) {
             List<String> reds = stateMachine.redFlagsIn(areq.getMessage());
             if (!reds.isEmpty() && !hasPastTense(areq.getMessage())) {
@@ -137,7 +137,7 @@ public class AssistantOrchestrator {
         // Agent 协作（医疗安全）：会话已有 EMERGENCY 事实 → 预约落单前确定性拦截；
         // 用户澄清「已排除/看过急诊」→ 清除事实放行。
         if (agent.getType() == AgentType.SCHEDULER) {
-            boolean override = hasEmergencyOverride(areq.getMessage());
+            boolean override = stateMachine.emergencyOverrideClearsFact(areq.getMessage());
             SessionFactStore.EmergencyFact ef = sessionFactStore.getEmergency(req.getSessionId());
             if (override) {
                 if (ef != null) {
@@ -259,7 +259,7 @@ public class AssistantOrchestrator {
                     resp.setToolResultCount(toolEvents.getResultCount());
                     resp.setElapsedMs(System.currentTimeMillis() - start);
                     completeTurn(capturedReq, resp, req);
-                    return Mono.just(SseEvent.done(full, resp.getTriage(),
+                    return Mono.just(SseEvent.done(resp.getFullText(), resp.getTriage(),
                             agent.getDisplayName(), capturedReq.getSources()));
                 }))
                 .onErrorResume(e -> {
