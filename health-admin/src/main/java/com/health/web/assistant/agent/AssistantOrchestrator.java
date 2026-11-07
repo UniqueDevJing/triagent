@@ -48,6 +48,11 @@ import java.util.List;
 @Service
 public class AssistantOrchestrator {
 
+    /** 护栏自身故障时的统一兜底话术（不复述用户提问，避免二次泄露） */
+    private static final String BLOCKED_BY_GUARD_FAILURE =
+            "⚠️ 本次回答未通过安全校验（护栏执行异常），为用药安全已拦截。"
+            + "请稍后重试；如确有不适，请前往正规医院由执业医师面诊。";
+
     private static final Logger log = LoggerFactory.getLogger(AssistantOrchestrator.class);
 
     private final ChatClient chatClient;
@@ -471,13 +476,11 @@ public class AssistantOrchestrator {
     /** 带「输入特征/规则命中」的完整收尾：决策日志记录本轮最终裁决，供会话重放与审计复盘 */
     private void completeTurn(AgentRequest request, AgentResponse response, ChatRequest chat,
                               List<String> redFlags, List<String> ruleHits) {
-        for (AgentAdvice a : advices) {
-            try {
-                a.after(request, response);
-            } catch (Exception e) {
-                log.warn("[agent] Advisor.after 异常 {}: {}", a.getClass().getSimpleName(), e.getMessage());
-            }
+        applyAfterAdvices(advices, request, response);
+        if (response.isBlocked()) {
+            return;   // 护栏 fail-closed 已接管：不写记忆、不记决策日志
         }
+        // 护栏执行集中在 applyAfterAdvices（便于单测 fail-closed 语义）
         memoryStore.append(chat.getSessionId(), chat.getMessage(), response.getFullText());
         if (decisionLog != null) {
             try {
@@ -566,4 +569,31 @@ public class AssistantOrchestrator {
             return null;
         }
     }
+    /**
+     * 依次执行输出护栏（{@code after}），**任何护栏抛异常都按失败关闭处理**。
+     *
+     * <p>为什么必须 fail-closed：{@code after} 承担的是"处方/剂量输出拦截"。
+     * 它自己崩掉却继续放行，等于护栏被静默绕过，用户会收到未过滤、可能含具体剂量的回答。
+     * 安全组件出错时唯一可接受的降级是"拦住"，不是"放过"。
+     *
+     * @return 是否被拦截（true 表示已置 blocked，调用方不应继续后续流程）
+     */
+    static boolean applyAfterAdvices(java.util.List<AgentAdvice> advices,
+                                     com.health.web.assistant.model.AgentRequest request,
+                                     com.health.web.assistant.model.AgentResponse response) {
+        for (AgentAdvice advice : advices) {
+            try {
+                advice.after(request, response);
+            } catch (RuntimeException e) {
+                log.error("[agent] Advisor.after 异常，按失败关闭处理 {}: {}",
+                        advice.getClass().getSimpleName(), e.getMessage(), e);
+                response.setBlocked(true);
+                response.setBlockReason("guardrail-failure:" + advice.getClass().getSimpleName());
+                response.setFullText(BLOCKED_BY_GUARD_FAILURE);
+                return true;
+            }
+        }
+        return false;
+    }
+
 }
