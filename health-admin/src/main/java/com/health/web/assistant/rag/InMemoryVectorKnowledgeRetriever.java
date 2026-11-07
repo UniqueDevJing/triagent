@@ -80,7 +80,7 @@ public class InMemoryVectorKnowledgeRetriever implements KnowledgeRetriever {
 
     @Override
     public List<KnowledgeDoc> retrieve(String query, int topK) {
-        if (!loaded || unavailable || query == null || query.isBlank()) {
+        if (!loaded || unavailable.get() || query == null || query.isBlank()) {
             return List.of();
         }
         float[] qv = embeddingClient.embed(query);
