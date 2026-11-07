@@ -17,7 +17,13 @@ public enum ToolCapability {
     /** 读取会员历史评估/体检记录（含健康数据，需授权） */
     ASSESSMENT_READ(List.of("getMemberAssessments")),
     /** 创建预约预订单（写操作，仅预约管家可用） */
-    APPOINTMENT_CREATE(List.of("createPreOrder"));
+    APPOINTMENT_CREATE(List.of("createPreOrder")),
+    /**
+     * 生成式配图（W4）：仅限患者教育示意图。
+     * 单列成能力而非混进现有项，是为了让"谁能出图"在策略表里一眼可审——
+     * 预约管家不需要出图，就不该有这项能力。
+     */
+    IMAGE_GENERATE(List.of("generateImage"));
 
     private final List<String> toolNames;
 

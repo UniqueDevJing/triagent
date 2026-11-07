@@ -22,13 +22,16 @@ public class ToolAccessPolicy {
     private final Map<AgentType, Set<ToolCapability>> policy = new EnumMap<>(AgentType.class);
 
     public ToolAccessPolicy() {
-        // 分诊顾问：只看疾病库与会员（定位用），不碰评估记录与下单
+        // 分诊顾问：只看疾病库与会员（定位用），不碰评估记录与下单；
+        // W4 起可用于"解释性配图"（如症状示意图），但不出诊断影像
         policy.put(AgentType.TRIAGE,
-                EnumSet.of(ToolCapability.DISEASE_SEARCH, ToolCapability.MEMBER_SEARCH));
-        // 报告解读：读会员 + 读评估记录 + 查疾病（对照报告结论），不可下单
+                EnumSet.of(ToolCapability.DISEASE_SEARCH, ToolCapability.MEMBER_SEARCH,
+                        ToolCapability.IMAGE_GENERATE));
+        // 报告解读：读会员 + 读评估记录 + 查疾病（对照报告结论），不可下单；可出宣教示意图
         policy.put(AgentType.REPORT,
-                EnumSet.of(ToolCapability.MEMBER_SEARCH, ToolCapability.ASSESSMENT_READ, ToolCapability.DISEASE_SEARCH));
-        // 预约管家：查会员 + 建预订单（写），不读评估、不查疾病库
+                EnumSet.of(ToolCapability.MEMBER_SEARCH, ToolCapability.ASSESSMENT_READ,
+                        ToolCapability.DISEASE_SEARCH, ToolCapability.IMAGE_GENERATE));
+        // 预约管家：查会员 + 建预订单（写），不读评估、不查疾病库，也不出图
         policy.put(AgentType.SCHEDULER,
                 EnumSet.of(ToolCapability.MEMBER_SEARCH, ToolCapability.APPOINTMENT_CREATE));
     }

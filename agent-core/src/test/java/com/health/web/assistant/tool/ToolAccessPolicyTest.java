@@ -45,12 +45,15 @@ class ToolAccessPolicyTest {
     @Test
     @DisplayName("授权：各角色拥有的工具集合符合声明式能力映射")
     void declaredToolsMatch() {
+        // W4：分诊/报告多了"生成宣教示意图"能力；预约管家明确没有出图能力。
         assertThat(policy.allowedTools(AgentType.TRIAGE))
-                .containsExactlyInAnyOrder("searchDiseases", "searchMembers");
+                .containsExactlyInAnyOrder("searchDiseases", "searchMembers", "generateImage");
         assertThat(policy.allowedTools(AgentType.REPORT))
-                .containsExactlyInAnyOrder("searchMembers", "getMemberAssessments", "searchDiseases");
+                .containsExactlyInAnyOrder("searchMembers", "getMemberAssessments", "searchDiseases",
+                        "generateImage");
         assertThat(policy.allowedTools(AgentType.SCHEDULER))
-                .containsExactlyInAnyOrder("searchMembers", "createPreOrder");
+                .containsExactlyInAnyOrder("searchMembers", "createPreOrder")
+                .doesNotContain("generateImage");
     }
 
     @Test
