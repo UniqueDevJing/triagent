@@ -1,5 +1,52 @@
 # triagent · 基于 LLM 的多 Agent 分诊就医系统
 
+![CI](https://github.com/UniqueDevJing/triagent/actions/workflows/ci.yml/badge.svg) ![tests](https://img.shields.io/badge/tests-green-brightgreen) ![license](https://img.shields.io/badge/license-MIT-blue)
+
+
+## 架构速览
+
+> 医疗分诊多智能体：能力白名单 + 安全护栏 + 可审计决策链
+
+```mermaid
+flowchart TB
+    U["用户诉求"] --> G1["输入护栏<br/>开药/处方诱导拦截"]
+    G1 --> R["Supervisor 路由"]
+    R --> T["TRIAGE<br/>分诊顾问"]
+    R --> A["REPORT<br/>报告解读"]
+    R --> S["SCHEDULER<br/>预约管家"]
+    T --> TL["工具层<br/>疾病库 / 会员 / 评估 / 预订单"]
+    A --> TL
+    S --> TL
+    TL --> P{"能力白名单<br/>ToolAccessPolicy"}
+    P -->|越权| B["拦截 + 审计留痕"]
+    P -->|允许| X["执行"]
+    X --> G2["输出护栏<br/>处方/剂量拦截（fail-closed）"]
+    G2 --> O["回答 + 决策日志"]
+```
+
+### 3 分钟跑起来
+
+```bash
+# 后端（需要 MySQL + Redis；本机可用 Docker 起服务）
+cd health-admin && mvn spring-boot:run
+
+# 前端
+cd ../health-web && npm ci && npm run dev
+```
+
+### 这个项目里真正花力气解决的问题
+
+| 问题 | 做法 | 可验证的产出 |
+|---|---|---|
+| 诱导越权开处方 | 输入护栏（含空格/符号/繁体规避） | 75 例文本红队 |
+| 诱导生成伪造医疗影像 | 图像护栏 + 水印/免责强制 | 25 例图像红队 |
+| 模型绕过角色权限调工具 | 能力白名单 + 守卫 + 审计 | 3×N 权限矩阵测试 |
+| **输出护栏自身崩溃则放行** | **fail-closed：护栏异常直接拦截** | `GuardrailFailClosedTest`（3 例） |
+| 断言强度不明 | 变异测试量化 | `docs/mutation-score.md`（24 mutants / 82% killed） |
+| 真实依赖下的行为未知 | 真 MySQL/Redis 集成测试 + CI 容器 | 196→203 测试，CI 起容器 |
+
+---
+
 > **让 AI 先判断「该不该去医院、去哪个科」，再领航完成「报告解读 → 门诊预约」的多智能体就医助手。**
 >
 > *A multi-agent triage assistant — Supervisor planning, deterministic medical-safety state machine, RAG sourcing, and dual guardrails, built on Spring AI 1.0 GA + DeepSeek.*

@@ -6,6 +6,8 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 
 import './styles/global.css'
+// 体验增强层：必须放在 Element Plus 与 global.css 之后，才能覆盖组件默认观感
+import './styles/polish.css'
 import App from './App.vue'
 import router from './router'
 
