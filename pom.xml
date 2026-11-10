@@ -19,6 +19,7 @@
         <module>health-framework</module>
         <module>agent-core</module>
         <module>health-admin</module>
+        <module>triagent-demo</module>
     </modules>
 
     <properties>

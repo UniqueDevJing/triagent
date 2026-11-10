@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.health</groupId>
+        <artifactId>health-management-system</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <!-- T4：最小独立 demo——只依赖 agent-core（状态机/权限/预算/路由/事实库），
+         不需要完整健康平台与数据库；mvn 一条命令即可跑通 5 条演示。 -->
+    <artifactId>triagent-demo</artifactId>
+    <description>TriAgent 最小可运行示例：纯 agent-core 决策链演示（无 Spring Boot / 无数据库）</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.health</groupId>
+            <artifactId>agent-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
