@@ -37,7 +37,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           # vite 8（T7 升级）要求 Node 20.19+ / 22.12+
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: health-web/package-lock.json
       - run: npm ci
