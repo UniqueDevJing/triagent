@@ -10,7 +10,6 @@ import com.health.web.assistant.model.AgentRequest;
 import com.health.web.assistant.model.AgentResponse;
 import com.health.web.assistant.model.ChatRequest;
 import com.health.web.assistant.model.SseEvent;
-import com.health.web.assistant.model.TriageResult;
 import com.health.web.assistant.service.PreOrderService;
 import com.health.web.assistant.tool.AgentToolkit;
 import com.health.web.assistant.tool.BudgetGuard;
@@ -63,6 +62,7 @@ public class AssistantOrchestrator {
     private final TriageJsonParser triageParser;
     private final TurnFinalizer turnFinalizer;
     private final LlmTurnAssembler llmTurnAssembler;
+    private final TriageDeterministicFlow triageFlow;
 
     public AssistantOrchestrator(ChatClient chatClient,
                                  AgentRegistry agentRegistry,
@@ -83,7 +83,8 @@ public class AssistantOrchestrator {
                                  DeterministicFallback fallbacks,
                                  TriageJsonParser triageParser,
                                  TurnFinalizer turnFinalizer,
-                                 LlmTurnAssembler llmTurnAssembler) {
+                                 LlmTurnAssembler llmTurnAssembler,
+                                 TriageDeterministicFlow triageFlow) {
         this.chatClient = chatClient;
         this.agentRegistry = agentRegistry;
         this.stateMachine = stateMachine;
@@ -104,6 +105,7 @@ public class AssistantOrchestrator {
         this.triageParser = triageParser;
         this.turnFinalizer = turnFinalizer;
         this.llmTurnAssembler = llmTurnAssembler;
+        this.triageFlow = triageFlow;
     }
 
     public Flux<SseEvent> chat(ChatRequest req) {
@@ -169,36 +171,11 @@ public class AssistantOrchestrator {
         // —— TRIAGE 分支：状态机 红旗短路 / 多轮澄清（确定性，离线可演示）——
         if (agent.getType() == AgentType.TRIAGE) {
             SymptomStateMachine.Decision d = stateMachine.decide(req.getSessionId(), areq.getMessage());
-            if (d.type() == SymptomStateMachine.DecisionType.EMERGENCY) {
-                TriageResult tri = stateMachine.buildEmergencyTriage(d.redFlagWords());
-                String answer = stateMachine.emergencyAnswerText(d.redFlagWords());
-                log.warn("[agent] 会话={} 红旗拦截 → EMERGENCY，命中={}", req.getSessionId(), d.redFlagWords());
-                sessionFactStore.recordEmergency(req.getSessionId(), tri.getUrgency(),
-                        tri.getDepartments(), tri.getDisclaimer());
-                AgentResponse resp = new AgentResponse();
-                resp.setFullText(answer);
-                resp.setTriage(tri);
-                resp.setTurnType("EMERGENCY");
-                resp.setElapsedMs(System.currentTimeMillis() - start);
-                turnFinalizer.finalize(capturedReq, resp, req, d.redFlagWords(), List.of("red-flag-short-circuit"));
-                if (triageFirst) {
-                    return Flux.concat(
-                            Flux.just(SseEvent.plan("TRIAGE_FIRST", "预约请求含急症红旗 → 应急分诊优先")),
-                            Flux.just(SseEvent.done(answer, tri, agent.getDisplayName(), areq.getSources())));
+            if (d.type() != SymptomStateMachine.DecisionType.PROCEED) {
+                Flux<SseEvent> deterministic = triageFlow.handle(d, agent, areq, req, start, triageFirst);
+                if (deterministic != null) {
+                    return deterministic;
                 }
-                return Flux.just(SseEvent.done(answer, tri, agent.getDisplayName(), areq.getSources()));
-            }
-            if (d.type() == SymptomStateMachine.DecisionType.CLARIFY) {
-                String question = d.question();
-                log.info("[agent] 会话={} 状态机追问: {}", req.getSessionId(), question);
-                AgentResponse resp = new AgentResponse();
-                resp.setFullText(question);
-                resp.setTurnType("CLARIFY");
-                resp.setElapsedMs(System.currentTimeMillis() - start);
-                turnFinalizer.finalize(capturedReq, resp, req);
-                return Flux.just(
-                        SseEvent.clarify(question, d.missingFields()),
-                        SseEvent.done(question, null, agent.getDisplayName(), areq.getSources()));
             }
         }
 
