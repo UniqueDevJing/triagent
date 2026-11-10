@@ -10,6 +10,36 @@ jobs:
   backend:
     name: Backend · compile & unit tests
     runs-on: ubuntu-latest
+    # 集成测试防假绿：IntegrationEnvGuardTest 要求 CI 必须提供真实 Redis + MySQL
+    # （缺失即失败，不允许集成用例静默跳过）。
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: it_root_pw
+          MYSQL_DATABASE: health_it
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pit_root_pw"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      IT_REDIS_HOST: 127.0.0.1
+      IT_REDIS_PORT: '6379'
+      IT_MYSQL_URL: jdbc:mysql://127.0.0.1:3306/health_it?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      IT_MYSQL_USER: root
+      IT_MYSQL_PASSWORD: it_root_pw
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
