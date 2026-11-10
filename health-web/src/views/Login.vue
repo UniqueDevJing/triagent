@@ -1,93 +1,92 @@
 <template>
   <div class="login-page">
-    <div class="login-card">
-      <div class="login-logo">
-        <svg viewBox="0 0 80 80" fill="none">
-          <defs>
-            <linearGradient id="leaf1" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#66BB6A"/>
-              <stop offset="100%" stop-color="#2E7D32"/>
-            </linearGradient>
-            <linearGradient id="leaf2" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#81C784"/>
-              <stop offset="100%" stop-color="#388E3C"/>
-            </linearGradient>
-            <linearGradient id="leaf3" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0%" stop-color="#43A047"/>
-              <stop offset="100%" stop-color="#1B5E20"/>
-            </linearGradient>
-            <linearGradient id="vineGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#81C784"/>
-              <stop offset="50%" stop-color="#4CAF50"/>
-              <stop offset="100%" stop-color="#2E7D32"/>
-            </linearGradient>
-            <filter id="leafShadow">
-              <feDropShadow dx="0" dy="1.5" stdDeviation="2.5" flood-color="#1B5E20" flood-opacity="0.22"/>
-            </filter>
-          </defs>
-          <path d="M40,62 C22,46 16,28 28,22 C34,19 38,24 40,28 C42,24 46,19 52,22 C64,28 58,46 40,62Z"
-            fill="none" stroke="url(#vineGrad)" stroke-width="0.9" opacity="0.45" stroke-dasharray="3,1.5" class="heart-vine"/>
-          <g transform="translate(26,28) rotate(-35) scale(0.9)" filter="url(#leafShadow)">
-            <path d="M0,-15 C9,-9 9,5 0,10 C-9,5 -9,-9 0,-15Z" fill="url(#leaf1)" opacity="0.9"/>
-            <line x1="0" y1="-13" x2="0" y2="8" stroke="rgba(255,255,255,0.3)" stroke-width="0.8"/>
-          </g>
-          <g transform="translate(54,28) rotate(35) scale(0.9)" filter="url(#leafShadow)">
-            <path d="M0,-15 C9,-9 9,5 0,10 C-9,5 -9,-9 0,-15Z" fill="url(#leaf1)" opacity="0.9"/>
-            <line x1="0" y1="-13" x2="0" y2="8" stroke="rgba(255,255,255,0.3)" stroke-width="0.8"/>
-          </g>
-          <g transform="translate(40,54) rotate(180) scale(0.8)" filter="url(#leafShadow)">
-            <path d="M0,-14 C8,-8 8,4 0,9 C-8,4 -8,-8 0,-14Z" fill="url(#leaf3)" opacity="0.88"/>
-            <line x1="0" y1="-12" x2="0" y2="7" stroke="rgba(255,255,255,0.25)" stroke-width="0.7"/>
-          </g>
-          <g transform="translate(30,20) rotate(-60) scale(0.55)" filter="url(#leafShadow)">
-            <path d="M0,-13 C7,-7 7,4 0,8 C-7,4 -7,-7 0,-13Z" fill="url(#leaf2)" opacity="0.82"/>
-          </g>
-          <g transform="translate(50,20) rotate(60) scale(0.55)" filter="url(#leafShadow)">
-            <path d="M0,-13 C7,-7 7,4 0,8 C-7,4 -7,-7 0,-13Z" fill="url(#leaf2)" opacity="0.82"/>
-          </g>
-          <g transform="translate(28,42) rotate(-70) scale(0.5)" filter="url(#leafShadow)">
-            <path d="M0,-12 C6,-6 6,3 0,7 C-6,3 -6,-6 0,-12Z" fill="url(#leaf2)" opacity="0.75"/>
-          </g>
-          <g transform="translate(52,42) rotate(70) scale(0.5)" filter="url(#leafShadow)">
-            <path d="M0,-12 C6,-6 6,3 0,7 C-6,3 -6,-6 0,-12Z" fill="url(#leaf2)" opacity="0.75"/>
-          </g>
-          <circle cx="40" cy="36" r="5" fill="rgba(255,255,255,0.55)"/>
-          <circle cx="40" cy="36" r="2.5" fill="#C8E6C9"/>
-          <circle cx="40" cy="36" r="1.2" fill="#FFF9C4"/>
-          <circle cx="40" cy="40" r="35" fill="none" stroke="#66BB6A" stroke-width="1" opacity="0.35"/>
-          <circle cx="40" cy="40" r="30" fill="none" stroke="#81C784" stroke-width="0.5" opacity="0.22" stroke-dasharray="5,4"/>
-        </svg>
-      </div>
-      <div class="login-clock">
-        <span class="clock-time">{{ currentTime }}</span>
-        <span class="clock-date">{{ currentDate }}</span>
-      </div>
-      <h2 class="login-title">智能医疗系统</h2>
-      <el-form ref="formRef" :model="form" :rules="rules" class="login-form" @keyup.enter="handleLogin">
-        <el-form-item prop="username">
-          <el-input v-model="form.username" placeholder="用户名" size="large" :prefix-icon="User" />
-        </el-form-item>
-        <el-form-item prop="password">
-          <el-input v-model="form.password" type="password" placeholder="密码" size="large" show-password :prefix-icon="Lock" />
-        </el-form-item>
-        <el-form-item prop="captchaCode">
-          <div class="captcha-row">
-            <el-input v-model="form.captchaCode" placeholder="验证码" size="large" :prefix-icon="Key" class="captcha-input" maxlength="4"/>
-            <div class="captcha-img-wrap" @click="refreshCaptcha" title="点击刷新验证码">
-              <img v-if="captchaImage" :src="captchaImage" alt="验证码" class="captcha-img" />
-              <el-icon v-else class="captcha-loading"><Loading /></el-icon>
+    <section class="brand-panel">
+      <div class="grid-overlay" aria-hidden="true"></div>
+      <div class="glow" aria-hidden="true"></div>
+      <div class="brand-inner">
+        <div class="bp-head">
+          <svg viewBox="0 0 32 32" fill="none" class="bp-mark" aria-hidden="true">
+            <rect width="32" height="32" rx="9" fill="#14B39B" />
+            <path d="M9.5 9.5 16 16l6.5-6.5M9.5 22.5 16 16l6.5 6.5" stroke="#fff" stroke-width="1.7" stroke-linecap="round" opacity=".85" />
+            <circle cx="9.5" cy="9.5" r="2.3" fill="#fff" />
+            <circle cx="22.5" cy="9.5" r="2.3" fill="#fff" />
+            <circle cx="9.5" cy="22.5" r="2.3" fill="#fff" />
+            <circle cx="22.5" cy="22.5" r="2.3" fill="#fff" />
+            <circle cx="16" cy="16" r="3.4" fill="#0C2237" stroke="#fff" stroke-width="1.5" />
+          </svg>
+          <span class="bp-wordmark">TriAgent</span>
+          <span class="bp-chip">v1.0-rc</span>
+        </div>
+
+        <div class="bp-body">
+          <div class="bp-eyebrow">MULTI-AGENT CLINICAL TRIAGE</div>
+          <h1 class="bp-title">让每一次分诊<br /><em>有据可循</em></h1>
+          <p class="bp-desc">
+            多个专职 Agent 协作完成意图识别、红旗筛查、科室路由与预约编排；
+            决策过程、工具调用与知识溯源全部可见、可复现。
+          </p>
+          <div class="bp-features">
+            <div class="bp-feature">
+              <span class="bp-num">01</span>
+              <div><div class="bp-f-title">多 Agent 协作编排</div><div class="bp-f-sub">Supervisor 路由 · 状态机 · 预算熔断</div></div>
+            </div>
+            <div class="bp-feature">
+              <span class="bp-num">02</span>
+              <div><div class="bp-f-title">透明推理过程</div><div class="bp-f-sub">编排决策 · 工具调用 · 标准化 Trace</div></div>
+            </div>
+            <div class="bp-feature">
+              <span class="bp-num">03</span>
+              <div><div class="bp-f-title">可溯源的分诊建议</div><div class="bp-f-sub">RAG 知识库 · 置信度 · 安全免责</div></div>
             </div>
           </div>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" size="large" :loading="loading" class="login-btn" @click="handleLogin">
-            {{ loading ? '登录中...' : '登 录' }}
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </div>
+        </div>
+
+        <div class="bp-foot">
+          <span>基于 LLM 的多 Agent 分诊就医系统</span>
+          <span class="bp-clock">{{ currentTime }} · {{ currentDate }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-panel">
+      <div class="form-inner">
+        <div class="form-eyebrow">控制台登录</div>
+        <h2 class="form-title">欢迎回来</h2>
+        <p class="form-sub">请使用管理员账号登录工作台</p>
+
+        <el-form ref="formRef" :model="form" :rules="rules" class="login-form" @keyup.enter="handleLogin">
+          <el-form-item prop="username">
+            <label class="field-label">用户名</label>
+            <el-input v-model="form.username" placeholder="请输入用户名" size="large" :prefix-icon="User" />
+          </el-form-item>
+          <el-form-item prop="password">
+            <label class="field-label">密码</label>
+            <el-input v-model="form.password" type="password" placeholder="请输入密码" size="large" show-password :prefix-icon="Lock" />
+          </el-form-item>
+          <el-form-item prop="captchaCode">
+            <label class="field-label">验证码</label>
+            <div class="captcha-row">
+              <el-input v-model="form.captchaCode" placeholder="4 位验证码" size="large" :prefix-icon="Key" class="captcha-input" maxlength="4" />
+              <div class="captcha-img-wrap" @click="refreshCaptcha" title="点击刷新验证码">
+                <img v-if="captchaImage" :src="captchaImage" alt="验证码" class="captcha-img" />
+                <el-icon v-else class="captcha-loading"><Loading /></el-icon>
+              </div>
+            </div>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" size="large" :loading="loading" class="login-btn" @click="handleLogin">
+              {{ loading ? '登录中…' : '登录工作台' }}
+            </el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="form-hint"><span class="hint-dot"></span>演示环境：账号已预填，输入验证码即可登录</div>
+      </div>
+      <div class="form-foot">© 2026 TriAgent · 仅用于技术演示，不构成医疗建议</div>
+    </section>
   </div>
 </template>
+
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
@@ -161,133 +160,83 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.login-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: url('/login-bg.png') center/cover no-repeat;
-  position: relative;
-  overflow: hidden;
-}
+.login-page { min-height: 100vh; display: flex; background: #fff; }
 
-.login-card {
-  position: relative; z-index: 1;
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(1px);
-  -webkit-backdrop-filter: blur(1px);
-  border-radius: 18px;
-  padding: 38px 42px;
-  width: 400px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
-  border: 1px solid rgba(255,255,255,0.6);
+/* ---------- 左侧品牌叙事 ---------- */
+.brand-panel {
+  position: relative; width: 54%; min-height: 100vh; overflow: hidden;
+  background: linear-gradient(155deg, #0C2237 0%, #102B43 58%, #0B3A44 100%);
+  color: #fff;
 }
+.grid-overlay {
+  position: absolute; inset: 0; opacity: .5;
+  background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(120deg, #000 10%, transparent 85%);
+}
+.glow {
+  position: absolute; width: 560px; height: 560px; right: -180px; top: -160px;
+  background: radial-gradient(circle, rgba(20,179,155,.20), transparent 62%); pointer-events: none;
+}
+.brand-inner { position: relative; z-index: 1; height: 100%; min-height: 100vh; display: flex; flex-direction: column; padding: 40px 56px 32px; }
+.bp-head { display: flex; align-items: center; gap: 11px; }
+.bp-mark { width: 32px; height: 32px; display: block; }
+.bp-wordmark { font-size: 18px; font-weight: 700; letter-spacing: .02em; }
+.bp-chip { font-size: 10px; letter-spacing: .08em; color: #7FE3D2; border: 1px solid rgba(20,179,155,.4); background: rgba(20,179,155,.12); border-radius: 5px; padding: 2px 7px; }
 
-.login-logo {
-  display: flex; justify-content: center;
-  margin-bottom: 10px;
-}
-.login-logo svg {
-  width: 52px; height: 52px;
-  filter: drop-shadow(0 3px 14px rgba(46,125,50,0.25));
-  animation: heartbeat 3s ease-in-out infinite;
-}
-@keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  8% { transform: scale(1.08); }
-  16% { transform: scale(1); }
-  24% { transform: scale(1.05); }
-  32% { transform: scale(1); }
-}
+.bp-body { flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 540px; padding: 40px 0; }
+.bp-eyebrow { font-size: 11px; letter-spacing: .22em; color: #4FD1B5; font-weight: 650; margin-bottom: 20px; }
+.bp-title { font-size: clamp(38px, 4vw, 56px); line-height: 1.18; font-weight: 700; letter-spacing: -.02em; margin: 0 0 20px; }
+.bp-title em { font-style: normal; color: #3FD0B0; }
+.bp-desc { font-size: 14px; line-height: 1.9; color: rgba(255,255,255,.62); max-width: 440px; margin: 0 0 38px; }
+.bp-features { display: flex; flex-direction: column; gap: 0; border-top: 1px solid rgba(255,255,255,.1); }
+.bp-feature { display: flex; gap: 18px; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+.bp-num { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #3FD0B0; padding-top: 3px; font-variant-numeric: tabular-nums; }
+.bp-f-title { font-size: 14px; font-weight: 650; margin-bottom: 5px; }
+.bp-f-sub { font-size: 12px; color: rgba(255,255,255,.45); }
+.bp-foot { display: flex; justify-content: space-between; gap: 16px; font-size: 11px; color: rgba(255,255,255,.35); border-top: 1px solid rgba(255,255,255,.08); padding-top: 18px; }
+.bp-clock { font-variant-numeric: tabular-nums; }
 
-.login-clock {
-  text-align: center;
-  margin-bottom: 8px;
-}
-.clock-time {
-  display: block;
-  font-size: 26px;
-  font-weight: 600;
-  color: #1B5E20;
-  letter-spacing: 1px;
-  font-variant-numeric: tabular-nums;
-}
-.clock-date {
-  display: block;
-  font-size: 12px;
-  color: #6d8a71;
-  margin-top: 2px;
-}
-
-.heart-vine {
-  animation: vinePulse 3s ease-in-out infinite;
-}
-@keyframes vinePulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 0.6; }
-}
-
-.login-title {
-  text-align: center;
-  font-size: 21px;
-  font-weight: 700;
-  color: #1B5E20;
-  margin: 0;
-  letter-spacing: 2px;
-  text-shadow: 0 1px 2px rgba(255,255,255,0.5);
-}
-
-.login-form { margin-top: 4px; }
+/* ---------- 右侧表单 ---------- */
+.form-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 32px 24px; }
+.form-inner { width: 100%; max-width: 372px; }
+.form-eyebrow { font-size: 11px; font-weight: 650; letter-spacing: .16em; color: var(--brand); text-transform: uppercase; margin-bottom: 12px; }
+.form-title { font-size: 30px; font-weight: 680; color: var(--text-1); letter-spacing: -.02em; margin: 0 0 8px; }
+.form-sub { font-size: 13px; color: var(--text-3); margin: 0 0 34px; }
+.login-form .el-form-item { margin-bottom: 22px; }
+.field-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 8px; }
 .login-form :deep(.el-input__wrapper) {
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px rgba(176,190,181,0.35) inset;
-  transition: all 0.3s;
-  background: rgba(255,255,255,0.6);
+  height: 44px; border-radius: 9px; background: var(--surface-alt);
+  box-shadow: 0 0 0 1px var(--line) inset;
 }
-.login-form :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1.5px #43A047 inset;
-}
-.login-form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px #2E7D32 inset;
-  background: rgba(255,255,255,0.85);
-}
-.captcha-row { display: flex; gap: 12px; }
-.captcha-input { flex: 1; }
+.login-form :deep(.el-input__wrapper:hover) { box-shadow: 0 0 0 1px #A9D9D1 inset; }
+.login-form :deep(.el-input__wrapper.is-focus) { background: #fff; box-shadow: 0 0 0 1.5px var(--brand) inset; }
+.login-form :deep(.el-input__prefix-inner) { color: var(--text-4); }
+.captcha-row { display: flex; gap: 10px; width: 100%; }
+.captcha-input { flex: 1; min-width: 0; }
 .captcha-img-wrap {
-  width: 120px; height: 42px;
-  border-radius: 8px; overflow: hidden; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(240,242,245,0.6); border: 1px solid #b0beb5;
-  transition: border-color 0.3s, transform 0.2s;
-  flex-shrink: 0;
+  width: 116px; height: 44px; flex-shrink: 0;
+  border: 1px solid var(--line); border-radius: 9px; overflow: hidden; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; background: var(--surface-alt);
+  transition: border-color .18s ease;
 }
-.captcha-img-wrap:hover { border-color: #43A047; transform: scale(1.03); }
+.captcha-img-wrap:hover { border-color: var(--brand); }
 .captcha-img { width: 100%; height: 100%; object-fit: cover; }
-.captcha-loading { font-size: 22px; color: #78909C; animation: spin 1s linear infinite; }
+.captcha-loading { font-size: 20px; color: var(--text-4); animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.login-btn { width: 100%; height: 46px; font-size: 14px; font-weight: 650; letter-spacing: .04em; border-radius: 9px; margin-top: 4px; }
+.form-hint { display: flex; align-items: center; gap: 8px; margin-top: 20px; font-size: 11.5px; color: var(--text-3); background: var(--brand-soft); border: 1px solid #D3EDE7; border-radius: 8px; padding: 10px 12px; }
+.hint-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--brand); flex-shrink: 0; }
+.form-foot { margin-top: 56px; font-size: 11px; color: var(--text-4); text-align: center; }
 
-.login-btn {
-  width: 100%; height: 46px;
-  font-size: 15px; letter-spacing: 4px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #43A047, #2E7D32);
-  border: none;
-  font-weight: 500;
-  transition: all 0.3s;
+@media (max-width: 960px) {
+  .brand-panel { display: none; }
+  .form-panel { min-height: 100vh; }
 }
-.login-btn:hover {
-  background: linear-gradient(135deg, #4CAF50, #1B5E20);
-  box-shadow: 0 6px 20px rgba(46,125,50,0.35);
-}
-
-.login-hint {
-  text-align: center;
-  font-size: 12px;
-  color: #8d9b90;
-  margin-top: 12px;
-}
-
 @media (max-width: 500px) {
-  .login-card { width: 92vw; padding: 30px 24px; }
+  .form-panel { padding: 32px 20px 20px; }
+  .form-title { font-size: 26px; }
+  .form-foot { margin-top: 36px; }
 }
 </style>

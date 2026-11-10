@@ -1,9 +1,6 @@
 <template>
   <div class="stat-card" :class="gradient">
     <div class="stat-card-inner">
-      <div class="stat-icon-box">
-        <el-icon :size="26"><component :is="icon" /></el-icon>
-      </div>
       <div class="stat-info">
         <div class="stat-label">{{ title }}</div>
         <div class="stat-value">
@@ -15,9 +12,9 @@
           <span>{{ Math.abs(trend) }}% 较昨日</span>
         </div>
       </div>
-    </div>
-    <div class="stat-card-bg">
-      <el-icon :size="72" color="rgba(255,255,255,0.08)"><component :is="icon" /></el-icon>
+      <div class="stat-icon-box">
+        <el-icon :size="18"><component :is="icon" /></el-icon>
+      </div>
     </div>
   </div>
 </template>

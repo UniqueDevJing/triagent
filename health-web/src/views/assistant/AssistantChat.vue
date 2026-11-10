@@ -4,7 +4,7 @@
     <div class="chat-col">
       <div class="triage-header">
         <div class="hd-left">
-          <div class="logo">⚕️</div>
+          <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.5"/></svg></div>
           <div>
             <h2>智能分诊 · 就医助手</h2>
             <p class="hd-sub">多 Agent 协作 · 意图连贯 · 透明推理 · 知识溯源</p>
@@ -21,7 +21,7 @@
       <!-- 对话流 -->
       <div ref="scrollRef" class="msg-list">
         <div v-if="messages.length === 0" class="empty">
-          <div class="empty-icon">🩺</div>
+          <div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 12h3l2-5 3 10 2.5-7 1.5 2h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
           <p>描述你的不适或需求，例如：</p>
           <div class="quick-chips">
             <span v-for="q in quick" :key="q.text" class="chip" @click="send(q.text)">{{ q.label }}</span>
@@ -30,7 +30,7 @@
         </div>
 
         <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
-          <div class="avatar" :class="m.role">{{ m.role === 'user' ? '🧑' : '🤖' }}</div>
+          <div class="avatar" :class="m.role">{{ m.role === 'user' ? '我' : 'AI' }}</div>
           <div class="bubble" :class="{ error: m.error }">
             <template v-if="m.role === 'user'">{{ m.text }}</template>
             <template v-else>
@@ -45,7 +45,7 @@
 
               <!-- Supervisor 编排决策（可视化步骤） -->
               <div v-if="m.plans && m.plans.length" class="plan-block">
-                <div class="sec-label">🧭 编排决策（Supervisor）</div>
+                <div class="sec-label">编排决策 · Supervisor</div>
                 <div v-for="(p, j) in m.plans" :key="j" class="plan-row">
                   <span class="plan-chip">{{ planLabel(p.decision) }}</span>
                   <span class="plan-reason">{{ p.reason }}</span>
@@ -54,7 +54,7 @@
 
               <!-- 工具过程 -->
               <div v-if="m.tools && m.tools.length" class="tools">
-                <div class="sec-label">🔧 工具过程</div>
+                <div class="sec-label">工具调用过程</div>
                 <div v-for="(t, j) in m.tools" :key="j" class="tool-row">
                   <span class="tool-name">{{ t.name }}</span>
                   <span v-if="t.args" class="tool-args">{{ t.args }}</span>
@@ -66,7 +66,7 @@
                    后端 createPreOrder 的 tool_result 现在结构化下发 orderId/status，
                    此前只有纯文本摘要，confirmPreOrder 接口一直是死代码、两步确认断在第二步。 -->
               <div v-if="m.pendingOrder" class="pending-order">
-                <div class="sec-label">🗓️ 待确认预约（第二步）</div>
+                <div class="sec-label">待确认预约 · 第二步</div>
                 <div class="po-meta">
                   #{{ m.pendingOrder.orderId }} · {{ m.pendingOrder.department }} · {{ m.pendingOrder.date }}
                 </div>
@@ -75,14 +75,14 @@
                   :disabled="m.pendingOrder.confirming || m.pendingOrder.confirmed"
                   @click="confirmOrder(m)"
                 >
-                  {{ m.pendingOrder.confirmed ? '✓ 已确认' : (m.pendingOrder.confirming ? '确认中…' : '确认预约') }}
+                  {{ m.pendingOrder.confirmed ? '已确认' : (m.pendingOrder.confirming ? '确认中…' : '确认预约') }}
                 </button>
                 <div v-if="m.pendingOrder.confirmed" class="po-done">预约已确认，请按时到院</div>
               </div>
 
               <!-- 澄清追问 + 快捷回复 -->
               <div v-if="m.clarify" class="clarify">
-                <div class="sec-label">✍️ 需要你补充</div>
+                <div class="sec-label">需要你补充</div>
                 <div class="clarify-q">{{ m.clarify.question }}</div>
                 <div class="clarify-chips">
                   <span
@@ -107,13 +107,13 @@
                   <ul><li v-for="(f, k) in m.triage.followUp" :key="k">{{ f }}</li></ul>
                 </div>
                 <div v-if="m.triage.confidence != null" class="tc-row"><b>置信度：</b>{{ Math.round(m.triage.confidence * 100) }}%</div>
-                <div v-if="m.triage.disclaimer" class="tc-disclaimer">⚠️ {{ m.triage.disclaimer }}</div>
+                <div v-if="m.triage.disclaimer" class="tc-disclaimer">注意 · {{ m.triage.disclaimer }}</div>
               </div>
 
               <!-- 知识来源 -->
               <div v-if="m.sources && m.sources.length" class="sources">
                 <el-collapse>
-                  <el-collapse-item :title="'📚 知识来源（' + m.sources.length + '）'">
+                  <el-collapse-item :title="'知识来源（' + m.sources.length + '）'">
                     <div v-for="(s, k) in m.sources" :key="k" class="src-row">
                       [{{ s.source }} #{{ s.refId }}] {{ s.title }}
                       <span class="score">{{ s.score }}</span>
@@ -195,7 +195,7 @@ async function confirmOrder(m) {
     await confirmPreOrder(po.orderId)
     po.confirmed = true
     po.confirming = false
-    m.text += '\n\n✅ 预订单 #' + po.orderId + ' 已确认，请按时到院。'
+    m.text += '\n\n预订单 #' + po.orderId + ' 已确认，请按时到院。'
   } catch (e) {
     po.confirming = false
   }
@@ -205,11 +205,11 @@ const scrollRef = ref(null)
 let sessionId = 'triage-' + Date.now().toString(36)
 
 const quick = [
-  { label: '🤔 最近不太舒服', text: '我最近不太舒服' },
-  { label: '🫀 胸痛伴呼吸困难', text: '我胸痛还呼吸困难，持续半小时了' },
-  { label: '🤕 头痛三天伴恶心', text: '左边头痛，持续3天，有点恶心，没有发烧' },
-  { label: '📑 解读体检报告', text: '解读会员孙明伟的体检报告，告诉我风险等级和后续建议' },
-  { label: '📅 预约门诊', text: '帮我给会员孙明伟预约呼吸内科的号' },
+  { label: '最近不太舒服', text: '我最近不太舒服' },
+  { label: '胸痛伴呼吸困难', text: '我胸痛还呼吸困难，持续半小时了' },
+  { label: '头痛三天伴恶心', text: '左边头痛，持续3天，有点恶心，没有发烧' },
+  { label: '解读体检报告', text: '解读会员孙明伟的体检报告，告诉我风险等级和后续建议' },
+  { label: '预约门诊', text: '帮我给会员孙明伟预约呼吸内科的号' },
 ]
 
 const fieldKeys = ['bodyPart', 'duration', 'accompany']
@@ -218,7 +218,7 @@ let previousMissing = []
 
 const fieldLabel = (f) => ({ bodyPart: '部位', duration: '时长', accompany: '伴随' }[f] || f)
 const urgencyText = (u) =>
-  ({ EMERGENCY: '🚨 需立即急诊', URGENT: '⚠️ 尽快就诊', ROUTINE: '💚 普通门诊' }[u] || u || '')
+  ({ EMERGENCY: '需立即急诊', URGENT: '尽快就诊', ROUTINE: '普通门诊' }[u] || u || '')
 const agentTagType = (name) =>
   (name || '').includes('预约') ? 'success' : (name || '').includes('解读') || (name || '').includes('报告') ? 'warning' : 'primary'
 
@@ -339,14 +339,14 @@ async function send(text) {
         scrollBottom()
       },
       error(d) {
-        bot.text = (bot.text ? bot.text + '\n' : '') + '⚠️ ' + (d.message || '服务异常')
+        bot.text = (bot.text ? bot.text + '\n' : '') + (d.message || '服务异常')
         bot.streaming = false
         bot.error = true
         scrollBottom()
       },
     })
   } catch (e) {
-    bot.text = '⚠️ 连接失败：' + (e.message || e)
+    bot.text = '连接失败：' + (e.message || e)
     bot.streaming = false
     bot.error = true
     scrollBottom()
@@ -357,238 +357,148 @@ async function send(text) {
 </script>
 
 <style scoped>
-.triage-wrap {
-  display: flex;
-  gap: 14px;
-  height: calc(100vh - 60px);
-  padding: 14px 18px;
-  box-sizing: border-box;
-}
+.triage-wrap { display: flex; gap: 16px; height: calc(100vh - 108px); min-height: 560px; }
 .chat-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background:
-    radial-gradient(1100px 380px at 88% -8%, rgba(91, 141, 239, 0.10), transparent 60%),
-    radial-gradient(800px 320px at -8% 108%, rgba(122, 91, 216, 0.08), transparent 55%),
-    #ffffff;
-  border: 1px solid var(--el-border-color-lighter, #ebeef5);
-  border-radius: 16px;
-  padding: 14px 16px;
+  flex: 1; min-width: 0; display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow-sm); overflow: hidden;
 }
-.triage-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
+
+/* ---------- 头部 ---------- */
+.triage-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
 .hd-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .logo {
-  width: 46px; height: 46px; border-radius: 14px; font-size: 22px;
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #5b8def, #7a5bd8); color: #fff;
-  box-shadow: 0 6px 16px rgba(91, 141, 239, 0.3);
+  background: var(--ink-900); color: #4FD1B5; font-size: 18px;
 }
-.triage-header h2 { margin: 0; font-size: 18px; color: #2c3e50; }
-.hd-sub { margin: 2px 0 0; font-size: 12px; color: #8a94a6; }
-.hd-right { display: flex; align-items: center; }
-.pulse { animation: pulse 1s infinite; margin-right: 4px; }
-@keyframes pulse { 50% { opacity: 0.2; } }
-.idle-tag { font-size: 12px; color: #a8b0bd; background: #f3f5f9; padding: 4px 12px; border-radius: 999px; }
+.logo svg { width: 20px; height: 20px; }
+.triage-header h2 { margin: 0; font-size: 15px; font-weight: 650; color: var(--text-1); }
+.hd-sub { margin: 3px 0 0; font-size: 11px; color: var(--text-4); letter-spacing: .01em; }
+.hd-right { display: flex; align-items: center; flex-shrink: 0; }
+.pulse { color: var(--brand); animation: pulse 1.2s infinite; margin-right: 4px; }
+@keyframes pulse { 50% { opacity: .25; } }
+.idle-tag { font-size: 11px; color: var(--text-3); background: var(--surface-alt); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; }
 
-.msg-list {
-  flex: 1;
-  overflow-y: auto;
-  background: #f5f7fb;
-  border-radius: 12px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  scroll-behavior: smooth;
-}
+/* ---------- 消息流 ---------- */
+.msg-list { flex: 1; overflow-y: auto; background: var(--surface-alt); padding: 18px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; }
 .msg-list::-webkit-scrollbar { width: 6px; }
-
-.empty { text-align: center; padding-top: 44px; color: #7d8aa0; }
+.empty { text-align: center; padding-top: 52px; color: var(--text-3); }
 .empty-icon {
-  display: inline-flex; width: 76px; height: 76px;
-  align-items: center; justify-content: center;
-  border-radius: 24px; font-size: 36px;
-  background: linear-gradient(135deg, rgba(91,141,239,0.12), rgba(122,91,216,0.12));
-  animation: floaty 3s ease-in-out infinite;
+  display: inline-flex; width: 62px; height: 62px; align-items: center; justify-content: center;
+  border-radius: 16px; font-size: 26px; margin-bottom: 18px;
+  background: var(--brand-soft); color: var(--brand-strong); border: 1px solid #D3EDE7;
 }
-@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-.empty-tip { font-size: 12px; margin-top: 10px; opacity: 0.7; }
-
-.quick-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
+.empty-icon svg { width: 28px; height: 28px; }
+.empty p { font-size: 13px; margin: 0 0 14px; }
+.empty-tip { font-size: 11.5px !important; color: var(--text-4); margin-top: 18px !important; }
+.quick-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 520px; margin: 0 auto; }
 .chip {
-  padding: 5px 12px; border-radius: 999px; cursor: pointer; font-size: 13px;
-  background: #fff; border: 1px solid #dbe3f2; color: #3d5a99; transition: all 0.2s ease;
-  user-select: none;
+  display: inline-flex; align-items: center; font-size: 12px; color: var(--text-2);
+  background: #fff; border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 14px; cursor: pointer; transition: all .18s ease;
 }
-.chip:hover { border-color: #5b8def; color: #5b8def; transform: translateY(-1px); }
-.chip.small { font-size: 12px; padding: 3px 10px; }
-.chip.disabled { opacity: 0.6; cursor: not-allowed; }
+.chip:hover { border-color: var(--brand); color: var(--brand-strong); background: var(--brand-soft); }
+.chip.small { font-size: 11.5px; padding: 5px 12px; }
+.chip.disabled { opacity: .5; cursor: not-allowed; }
 
-.msg { display: flex; gap: 10px; align-items: flex-start; animation: bubbleIn 0.28s ease both; }
-@keyframes bubbleIn {
-  from { opacity: 0; transform: translateY(6px) scale(0.99); }
-  to { opacity: 1; transform: none; }
-}
-.avatar {
-  flex: 0 0 34px; width: 34px; height: 34px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; font-size: 16px; background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-}
-.avatar.user { background: linear-gradient(135deg, #e8efff, #efe9ff); }
-.bubble {
-  max-width: 78%;
-  min-width: 0;
-  padding: 10px 14px;
-  border-radius: 14px;
-  font-size: 14px;
-  line-height: 1.7;
-  word-break: break-word;
-}
+.msg { display: flex; gap: 10px; align-items: flex-start; }
 .msg.user { flex-direction: row-reverse; }
-.msg.user .bubble {
-  background: linear-gradient(135deg, #5b8def, #7a5bd8); color: #fff;
-  border-bottom-right-radius: 4px;
-  box-shadow: 0 6px 16px rgba(91, 141, 239, 0.25);
+.avatar { width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.avatar.assistant { background: var(--ink-900); color: #4FD1B5; }
+.avatar.user { background: #E4EDF3; color: var(--ink-700); }
+.bubble {
+  max-width: min(78%, 760px); background: #fff; border: 1px solid var(--line);
+  border-radius: 4px 12px 12px 12px; padding: 12px 15px;
+  font-size: 13px; line-height: 1.75; color: var(--text-1); box-shadow: var(--shadow-sm);
 }
-.msg.assistant .bubble {
-  background: #fff; border: 1px solid var(--el-border-color-lighter, #ebeef5);
-  border-bottom-left-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-.bubble.error .answer { color: #c45656; }
+.msg.user .bubble { background: var(--brand); border-color: var(--brand); color: #fff; border-radius: 12px 4px 12px 12px; }
+.bubble.error { border-color: #F3C5C1; background: #FEF6F5; }
+.bubble.error .answer { color: #B8403A; }
+.m-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+.m-agent { font-size: 11px; font-weight: 650; color: var(--brand-strong); letter-spacing: .02em; }
+.m-urgency { font-size: 10.5px; font-weight: 650; padding: 1px 7px; border-radius: 4px; background: var(--surface-alt); color: var(--text-3); }
+.m-urgency.urgent { color: #B8781A; background: #FDF4E6; }
+.m-urgency.emergency { color: #C2453C; background: #FDEDEB; }
+.answer { word-break: break-word; }
+.answer p { margin: 0 0 8px; }
+.answer p:last-child { margin-bottom: 0; }
+.answer ul, .answer ol { margin: 6px 0 8px 18px; }
+.answer code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; background: var(--surface-alt); padding: 1px 5px; border-radius: 4px; }
+.answer strong { font-weight: 650; }
+.caret { color: var(--brand); animation: pulse 1s infinite; }
+.sec-label { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; color: var(--text-4); text-transform: uppercase; margin-bottom: 8px; }
 
-.m-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; }
-.m-agent { color: #7d8aa0; background: #f0f4fc; padding: 2px 8px; border-radius: 999px; }
-.m-urgency { font-weight: 600; }
-.m-urgency.emergency { color: #e0533d; }
-.m-urgency.urgent { color: #d98c1b; }
-.m-urgency.routine { color: #4fae2f; }
-.caret { color: #5b8def; animation: blink 1s infinite; margin-left: 2px; }
-@keyframes blink { 50% { opacity: 0; } }
+/* ---------- 过程可视化卡片 ---------- */
+.plan-block, .tools, .pending-order, .clarify, .sources { margin-top: 12px; padding: 11px 13px; background: var(--surface-alt); border: 1px solid var(--line-soft); border-radius: 9px; }
+.plan-row, .tool-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 11.5px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.plan-row:last-child, .tool-row:last-child { border-bottom: none; }
+.plan-chip { flex-shrink: 0; font-size: 10.5px; font-weight: 650; color: var(--brand-strong); background: var(--brand-soft); border-radius: 4px; padding: 2px 7px; }
+.plan-reason { color: var(--text-2); }
+.tool-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 650; color: var(--ink-700); background: #EAF0F4; padding: 2px 6px; border-radius: 4px; }
+.tool-args { color: var(--text-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; }
+.tool-result { color: var(--success); }
+.pending-order { background: #F3FAF8; border-color: #CFEBE4; }
+.po-meta { font-size: 12px; color: var(--text-2); margin-bottom: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.po-btn { border: none; background: var(--brand); color: #fff; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 7px; cursor: pointer; }
+.po-btn:hover:not(:disabled) { background: var(--brand-strong); }
+.po-btn:disabled { opacity: .6; cursor: not-allowed; }
+.po-done { font-size: 11.5px; color: var(--success); margin-top: 8px; }
+.clarify { background: #FDF9F1; border-color: #F1E4CB; }
+.clarify-q { font-size: 12.5px; color: var(--text-1); margin-bottom: 10px; font-weight: 550; }
+.clarify-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.sources { padding: 4px 12px; }
+.sources :deep(.el-collapse-item__header) { font-size: 11.5px; background: transparent; border: none; height: 36px; color: var(--text-3); }
+.sources :deep(.el-collapse-item__wrap) { background: transparent; border: none; }
+.src-row { font-size: 11.5px; color: var(--text-2); padding: 4px 0; border-top: 1px dashed var(--line); }
+.score { color: var(--text-4); font-variant-numeric: tabular-nums; margin-left: 6px; }
 
-.sec-label { font-size: 11px; color: #98a2b3; margin: 10px 0 6px; letter-spacing: 0.5px; }
-.plan-block { display: flex; flex-direction: column; gap: 6px; }
-.plan-row {
-  display: flex; align-items: center; gap: 8px; font-size: 12px;
-  background: #f6f3ff; border: 1px solid #e9e0fb; border-left: 3px solid #7a5bd8;
-  border-radius: 8px; padding: 6px 10px;
-}
-.plan-chip {
-  flex: 0 0 auto;
-  color: #6a42c8; background: #efe7ff; font-weight: 600;
-  padding: 2px 8px; border-radius: 999px; font-size: 11px;
-}
-.plan-reason { color: #6b5a8f; }
-.pending-order {
-  margin-top: 4px;
-  padding: 10px 12px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  border-radius: 10px;
-}
-.pending-order .po-meta { font-size: 13px; color: #7c2d12; margin: 4px 0 8px; }
-.pending-order .po-btn {
-  padding: 6px 16px;
-  border: none;
-  border-radius: 8px;
-  background: #ea580c;
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-}
-.pending-order .po-btn:disabled { opacity: 0.55; cursor: default; }
-.pending-order .po-done { margin-top: 6px; font-size: 12.5px; color: #16a34a; }
+/* ---------- 分诊结论 ---------- */
+.triage-card { margin-top: 12px; padding: 13px 15px; border: 1px solid var(--line); border-left: 3px solid var(--brand); border-radius: 4px 9px 9px 4px; background: var(--surface-alt); }
+.triage-card.emergency { border-left-color: var(--danger); background: #FDF4F3; }
+.triage-card.urgent { border-left-color: var(--warning); background: #FDF9F1; }
+.triage-card.routine { border-left-color: var(--success); background: #F2FAF6; }
+.tc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.urgency { font-weight: 700; font-size: 12px; color: var(--brand-strong); }
+.urgency.emergency { color: #C2453C; }
+.urgency.urgent { color: #B8781A; }
+.urgency.routine { color: #128A5E; }
+.tc-row { margin-top: 6px; font-size: 12px; color: var(--text-2); }
+.tc-row b { color: var(--text-1); font-weight: 650; }
+.tc-row ul { margin: 4px 0 0 18px; }
+.tc-disclaimer { margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--line); font-size: 11px; color: #A2605A; }
 
-.tools { display: flex; flex-direction: column; gap: 6px; }
-.tool-row {
-  display: flex; flex-direction: column; gap: 2px; font-size: 12px;
-  background: #f4f7fd; border: 1px solid #e4eaf6; border-radius: 8px; padding: 6px 10px;
-  transition: background 0.2s ease;
-}
-.tool-row:hover { background: #edf3fd; }
-.tool-name { color: #4a6bcf; font-weight: 600; }
-.tool-args { color: #6b7688; }
-.tool-result { color: #2f9e63; }
+/* ---------- 输入区 ---------- */
+.input-bar { display: flex; gap: 10px; align-items: flex-end; padding: 12px 16px; border-top: 1px solid var(--line); background: #fff; flex-shrink: 0; }
+.input-bar :deep(.el-textarea__inner) { border-radius: 9px; background: var(--surface-alt); box-shadow: 0 0 0 1px var(--line) inset; padding: 10px 12px; font-size: 13px; }
+.input-bar :deep(.el-textarea__inner:focus) { background: #fff; box-shadow: 0 0 0 1.5px var(--brand) inset; }
+.send-col { flex-shrink: 0; }
+.send-col .el-button { height: 54px; padding: 0 22px; border-radius: 9px; font-weight: 650; }
 
-.clarify { margin-top: 4px; }
-.clarify-q { font-weight: 500; }
-.clarify-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-
-.triage-card {
-  margin-top: 10px; border-radius: 12px; padding: 10px 12px;
-  border-left: 4px solid #999; background: #fafbfd; font-size: 13px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-.triage-card.emergency { border-left-color: #e0533d; background: #fdf1ef; }
-.triage-card.urgent { border-left-color: #e6a23c; background: #fdf7ec; }
-.triage-card.routine { border-left-color: #67c23a; background: #f2faf0; }
-.tc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.urgency { font-weight: 700; }
-.urgency.emergency { color: #e0533d; }
-.urgency.urgent { color: #d98c1b; }
-.urgency.routine { color: #4fae2f; }
-.tc-row { margin-top: 6px; }
-.tc-row ul { margin: 4px 0 0 18px; padding: 0; }
-.tc-disclaimer { margin-top: 8px; font-size: 12px; color: #a97474; }
-
-.sources { margin-top: 8px; }
-.src-row { font-size: 12px; padding: 2px 0; }
-.score { color: #999; margin-left: 6px; }
-
-.input-bar { display: flex; gap: 10px; align-items: flex-end; }
-.send-col { flex: 0 0 auto; }
-.input-bar :deep(.el-input__wrapper) {
-  box-shadow: 0 0 0 1px #dcdfe6 inset;
-  transition: box-shadow 0.25s ease, background 0.25s ease;
-}
-.input-bar :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #5b8def inset, 0 2px 10px rgba(91,141,239,0.12);
-}
-
-/* 右侧信息栏 */
-.info-col { flex: 0 0 292px; display: flex; }
-.panel {
-  width: 100%;
-  background: #fff;
-  border: 1px solid var(--el-border-color-lighter, #ebeef5);
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-  font-size: 13px;
-}
-.panel-title { font-weight: 700; color: #2c3e50; display: flex; align-items: center; gap: 6px; }
-.panel-title::before { content: ''; width: 4px; height: 14px; border-radius: 2px; background: linear-gradient(180deg, #5b8def, #7a5bd8); }
-.kv { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.k { color: #8a94a6; }
-.v { color: #33415c; font-weight: 500; text-align: right; }
-.v.muted { color: #a8b0bd; font-weight: 400; }
-.chips-inline { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
-.panel-sub { font-size: 12px; color: #8a94a6; }
+/* ---------- 右侧上下文 ---------- */
+.info-col { width: 258px; flex-shrink: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-sm); height: 100%; overflow-y: auto; }
+.panel-title { font-size: 13px; font-weight: 650; color: var(--text-1); padding-bottom: 12px; border-bottom: 1px solid var(--line-soft); margin-bottom: 14px; }
+.kv { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.k { font-size: 10.5px; font-weight: 650; letter-spacing: .06em; color: var(--text-4); text-transform: uppercase; }
+.v { font-size: 12.5px; color: var(--text-1); font-weight: 600; }
+.v.muted { color: var(--text-4); font-weight: 400; }
+.chips-inline { display: flex; flex-wrap: wrap; gap: 5px; }
+.panel-sub { font-size: 10.5px; font-weight: 650; letter-spacing: .06em; color: var(--text-4); text-transform: uppercase; margin-bottom: 10px; }
 .rail-links { display: flex; flex-direction: column; gap: 6px; }
-.rail-link {
-  font-size: 13px; color: #3d5a99; background: #f4f7fd;
-  border-radius: 8px; padding: 7px 10px; cursor: pointer;
-  border: 1px solid transparent; transition: all 0.2s ease; user-select: none;
-}
-.rail-link:hover { border-color: #5b8def; background: #eef4ff; }
-.rail-link.off { opacity: 0.6; cursor: not-allowed; }
-.rail-tip p { margin: 0 0 6px; color: #7d8aa0; font-size: 12px; line-height: 1.6; }
-.clear-btn { margin-top: auto; align-self: flex-start; }
+.rail-link { font-size: 12px; color: var(--text-2); padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; transition: all .18s ease; }
+.rail-link:hover { border-color: var(--brand); color: var(--brand-strong); background: var(--brand-soft); }
+.rail-link.off { opacity: .5; cursor: not-allowed; }
+.rail-tip { font-size: 11px; line-height: 1.7; color: var(--text-3); background: var(--surface-alt); border-radius: 8px; padding: 10px 12px; }
+.rail-tip p { margin: 0 0 6px; }
+.rail-tip p:last-child { margin-bottom: 0; }
+.clear-btn { width: 100%; margin-top: 14px; }
 
-@media (max-width: 1080px) {
-  .info-col { display: none; }
+@media (max-width: 1080px) { .info-col { display: none; } }
+@media (max-width: 768px) {
+  .triage-wrap { height: calc(100vh - 92px); min-height: 480px; }
+  .msg-list { padding: 12px; }
   .bubble { max-width: 88%; }
+  .triage-header { padding: 12px; }
 }
 </style>

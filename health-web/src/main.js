@@ -6,6 +6,8 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 
 import './styles/global.css'
+// VITAL 视觉层：必须在 global.css 之后引入
+import './styles/signal.css'
 import App from './App.vue'
 import router from './router'
 
