@@ -33,6 +33,7 @@ public class ToolGateway {
     private final ToolAccessGuard guard;
     private final BudgetGuard budget;
     private final long timeoutMs;
+    private final com.health.web.assistant.trace.TraceStore traceStore;
 
     /** 幂等结果缓存（会话粒度）：key = sessionId|role|tool|argsDigest */
     private final Map<String, CachedResult> idempotency = new java.util.concurrent.ConcurrentHashMap<>();
@@ -44,10 +45,12 @@ public class ToolGateway {
 
     public ToolGateway(ToolAccessGuard guard,
                        BudgetGuard budget,
-                       @Value("${assistant.tool.timeout-ms:10000}") long timeoutMs) {
+                       @Value("${assistant.tool.timeout-ms:10000}") long timeoutMs,
+                       com.health.web.assistant.trace.TraceStore traceStore) {
         this.guard = guard;
         this.budget = budget;
         this.timeoutMs = timeoutMs;
+        this.traceStore = traceStore;
     }
 
     /**
@@ -77,8 +80,17 @@ public class ToolGateway {
                 return cast(prev);
             }
         }
-        // 4) 超时 + 5) 执行审计
+        // 4) 超时 + 5) 执行审计（T6：同时挂 Trace 子 span，任意线程可还原决策链）
         long start = System.currentTimeMillis();
+        com.health.web.assistant.trace.RequestTrace.Span span = null;
+        if (traceStore != null) {
+            com.health.web.assistant.trace.RequestTrace trace = traceStore.active(sessionId);
+            if (trace != null) {
+                com.health.web.assistant.trace.RequestTrace.Span parent = trace.active();
+                span = trace.begin("tool." + toolName, parent == null ? null : parent.spanId());
+                span.attr("role", role.name());
+            }
+        }
         ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "tool-gateway-" + toolName);
             t.setDaemon(true);
@@ -91,14 +103,23 @@ public class ToolGateway {
                 result = future.get(timeoutMs, TimeUnit.MILLISECONDS);
             } catch (TimeoutException te) {
                 future.cancel(true);
+                if (span != null) {
+                    span.error("timeout " + timeoutMs + "ms");
+                }
                 throw new AgentBlockedException(
                         "工具 " + toolName + " 执行超时（" + timeoutMs + "ms），已终止并降级处理");
             } catch (InterruptedException ie) {
                 future.cancel(true);
                 Thread.currentThread().interrupt();
+                if (span != null) {
+                    span.error("interrupted");
+                }
                 throw new AgentBlockedException("工具 " + toolName + " 执行被中断，已降级处理");
             } catch (ExecutionException ee) {
                 Throwable cause = ee.getCause() == null ? ee : ee.getCause();
+                if (span != null) {
+                    span.error(String.valueOf(cause.getMessage()));
+                }
                 if (cause instanceof RuntimeException re) {
                     throw re;
                 }
@@ -107,6 +128,10 @@ public class ToolGateway {
             long elapsed = System.currentTimeMillis() - start;
             if (key != null) {
                 idempotency.put(key, result == null ? CachedResult.NULL : new CachedResult(result));
+            }
+            if (span != null) {
+                span.attr("elapsedMs", String.valueOf(elapsed));
+                span.ok();
             }
             ToolGatewayLog.audit(toolName, role, sessionId, elapsed, true);
             return result;

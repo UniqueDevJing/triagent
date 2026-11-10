@@ -32,7 +32,7 @@ class ToolGatewayTest {
         ReflectionTestUtils.setField(budget, "enabled", true);
         ReflectionTestUtils.setField(budget, "maxToolCalls", 20);
         ReflectionTestUtils.setField(budget, "maxTokens", 60000);
-        gateway = new ToolGateway(guard, budget, 500);
+        gateway = new ToolGateway(guard, budget, 500, null);
     }
 
     @Test
@@ -90,7 +90,7 @@ class ToolGatewayTest {
     @Test
     @DisplayName("超时：执行超过硬超时被终止并抛 AgentBlockedException")
     void timeoutTerminates() {
-        ToolGateway tightGateway = new ToolGateway(guard, budget, 80);
+        ToolGateway tightGateway = new ToolGateway(guard, budget, 80, null);
         assertThatThrownBy(() -> tightGateway.invoke(AgentType.TRIAGE, "s5", 1L,
                 "searchDiseases", Map.of("keyword", "头痛"), false, () -> {
                     try {

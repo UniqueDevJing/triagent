@@ -63,6 +63,7 @@ public class AssistantOrchestrator {
     private final TurnFinalizer turnFinalizer;
     private final LlmTurnAssembler llmTurnAssembler;
     private final TriageDeterministicFlow triageFlow;
+    private final com.health.web.assistant.trace.TraceStore traceStore;
 
     public AssistantOrchestrator(ChatClient chatClient,
                                  AgentRegistry agentRegistry,
@@ -84,7 +85,8 @@ public class AssistantOrchestrator {
                                  TriageJsonParser triageParser,
                                  TurnFinalizer turnFinalizer,
                                  LlmTurnAssembler llmTurnAssembler,
-                                 TriageDeterministicFlow triageFlow) {
+                                 TriageDeterministicFlow triageFlow,
+                                 com.health.web.assistant.trace.TraceStore traceStore) {
         this.chatClient = chatClient;
         this.agentRegistry = agentRegistry;
         this.stateMachine = stateMachine;
@@ -106,6 +108,7 @@ public class AssistantOrchestrator {
         this.turnFinalizer = turnFinalizer;
         this.llmTurnAssembler = llmTurnAssembler;
         this.triageFlow = triageFlow;
+        this.traceStore = traceStore;
     }
 
     public Flux<SseEvent> chat(ChatRequest req) {
@@ -115,6 +118,10 @@ public class AssistantOrchestrator {
     public Flux<SseEvent> chat(ChatRequest req, Long userId) {
         AgentRequest areq = new AgentRequest(req.getSessionId(), req.getMessage());
         long start = System.currentTimeMillis();
+        // T6：请求级 Trace——路由/护栏/分诊/工具/LLM 各阶段挂 span，脱敏后落 TraceStore，
+        // 单次请求可还原完整决策链（TraceController 查询）。
+        com.health.web.assistant.trace.RequestTrace trace = traceStore.begin(req.getSessionId());
+        com.health.web.assistant.trace.RequestTrace.Span routeSpan = trace.begin("route");
 
         // 路由：会话连续性优先（预约管家收症状时不被「胸痛」抢单成急救），
         // Supervisor 安全规划：预约请求内含当前急症红旗 → 本轮应急分诊优先（0 LLM 确定性输出）。
@@ -125,6 +132,10 @@ public class AssistantOrchestrator {
         if (triageFirst) {
             decided = AgentType.TRIAGE;
         }
+        routeSpan.attr("fresh", fresh.name());
+        routeSpan.attr("decided", decided.name());
+        routeSpan.attr("triageFirst", String.valueOf(triageFirst));
+        routeSpan.ok();
         if (router.hasCancelIntent(areq.getMessage())) {
             sessionState.clear(req.getSessionId());
         } else {
@@ -140,55 +151,76 @@ public class AssistantOrchestrator {
         // Agent 协作（医疗安全）：会话已有 EMERGENCY 事实 → 预约落单前确定性拦截；
         // 用户澄清「已排除/看过急诊」→ 清除事实放行。
         if (agent.getType() == AgentType.SCHEDULER) {
+            com.health.web.assistant.trace.RequestTrace.Span gateSpan = trace.begin("supervisor-gate");
             SessionFactStore.EmergencyFact ef = supervisorPlanner.gateScheduler(req.getSessionId(), areq.getMessage());
             if (ef != null) {
                 log.info("[agent] 会话={} 协作拦截：预约请求被本会话 EMERGENCY 分诊事实拦截", req.getSessionId());
+                gateSpan.event("blocked", "EMERGENCY fact present");
+                gateSpan.ok();
                 AgentResponse resp = new AgentResponse();
                 SseEvent block = emergencyIntervention.blockedSchedulerEvent(ef, areq.getSources(), resp);
                 resp.setElapsedMs(System.currentTimeMillis() - start);
                 turnFinalizer.finalize(areq, resp, req);
+                traceStore.finish(trace);
                 return Flux.concat(
                         Flux.just(SseEvent.plan("SAFETY_BLOCK", "检测到本会话 EMERGENCY 分诊事实，预约已拦截")),
                         Flux.just(block));
             }
+            gateSpan.event("allowed", "no emergency fact or user clarified");
+            gateSpan.ok();
         }
 
+        com.health.web.assistant.trace.RequestTrace.Span adviceSpan = trace.begin("advice-chain");
         for (AgentAdvice a : advices) {
             try {
                 areq = a.before(areq);
             } catch (AgentBlockedException ex) {
+                adviceSpan.error(ex.getMessage());
                 AgentResponse br = new AgentResponse();
                 br.setBlocked(true);
                 br.setBlockReason(ex.getMessage());
                 br.setTurnType("BLOCKED");
                 br.setElapsedMs(System.currentTimeMillis() - start);
                 turnFinalizer.finalize(areq, br, req);
+                traceStore.finish(trace);
                 return Flux.just(SseEvent.error(ex.getMessage()));
             }
         }
+        adviceSpan.ok();
         final AgentRequest capturedReq = areq;
 
         // —— TRIAGE 分支：状态机 红旗短路 / 多轮澄清（确定性，离线可演示）——
         if (agent.getType() == AgentType.TRIAGE) {
+            com.health.web.assistant.trace.RequestTrace.Span triageSpan = trace.begin("triage-short-circuit");
             SymptomStateMachine.Decision d = stateMachine.decide(req.getSessionId(), areq.getMessage());
             if (d.type() != SymptomStateMachine.DecisionType.PROCEED) {
+                triageSpan.attr("decision", d.type().name());
                 Flux<SseEvent> deterministic = triageFlow.handle(d, agent, areq, req, start, triageFirst);
                 if (deterministic != null) {
+                    triageSpan.ok();
+                    traceStore.finish(trace);
                     return deterministic;
                 }
+            } else {
+                triageSpan.event("proceed", "fields complete, hand over to LLM");
+                triageSpan.ok();
             }
         }
 
         // —— 预算熔断：会话 token 预算耗尽 → 跳过 LLM，降级到确定性规则（0 token 消耗）——
         if (budgetGuard != null && budgetGuard.tokenExceeded(req.getSessionId())) {
+            com.health.web.assistant.trace.RequestTrace.Span budgetSpan = trace.begin("budget-circuit");
             String reason = budgetGuard.degradeReason(req.getSessionId());
             log.warn("[agent] 会话={} 预算熔断：{} → 确定性降级（跳过 LLM）", req.getSessionId(), reason);
+            budgetSpan.event("degrade", reason);
+            budgetSpan.ok();
             String fallback = fallbacks.answer(agent.getType());
             AgentResponse resp = new AgentResponse();
             resp.setFullText(fallback);
             resp.setTurnType("DEGRADED");
             resp.setElapsedMs(System.currentTimeMillis() - start);
             turnFinalizer.finalize(capturedReq, resp, req, null, List.of("budget-token-exceeded"));
+            traceStore.finish(trace);
             return Flux.just(SseEvent.done(fallback, null, agent.getDisplayName(), areq.getSources()));
         }
 
@@ -212,6 +244,7 @@ public class AssistantOrchestrator {
                 req.getSessionId(), agent.getType(), agent.getAllowedTools(),
                 areq.getSources() == null ? 0 : areq.getSources().size(), userId);
 
+        com.health.web.assistant.trace.RequestTrace.Span llmSpan = trace.begin("llm-stream");
         Flux<SseEvent> textFlux = chatClient.prompt()
                 .system(agent.getSystemPrompt())
                 .user(userPrompt)
@@ -227,6 +260,14 @@ public class AssistantOrchestrator {
         return Flux.merge(textFlux, toolSink.asFlux())
                 .concatWith(llmTurnAssembler.assemble(
                         capturedReq, req, agent.getType(), agent.getDisplayName(), start, toolEvents, acc, budgetGuard))
+                .doFinally(sig -> {
+                    if ("cancelled".equals(String.valueOf(sig))) {
+                        llmSpan.error("client cancelled");
+                    } else {
+                        llmSpan.ok();
+                    }
+                    traceStore.finish(trace);
+                })
                 .onErrorResume(e -> {
                     log.warn("[agent] 会话={} 推理失败: {}", req.getSessionId(), e.getMessage());
                     return Flux.just(SseEvent.error("服务暂时不可用，请稍后重试"));
