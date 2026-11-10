@@ -13,9 +13,9 @@ import com.health.web.assistant.model.SseEvent;
 import com.health.web.assistant.service.PreOrderService;
 import com.health.web.assistant.tool.AgentToolkit;
 import com.health.web.assistant.tool.BudgetGuard;
-import com.health.web.assistant.tool.ToolAccessGuard;
 import com.health.web.assistant.tool.ToolAccessPolicy;
 import com.health.web.assistant.tool.ToolEventPublisher;
+import com.health.web.assistant.tool.ToolGateway;
 import com.health.web.assistant.tool.TriageTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +53,7 @@ public class AssistantOrchestrator {
     private final SessionFactStore sessionFactStore;
     private final List<AgentAdvice> advices;
     private final ToolAccessPolicy toolPolicy;
-    private final ToolAccessGuard toolGuard;
+    private final ToolGateway toolGateway;
     private final BudgetGuard budgetGuard;
     private final ConversationRouter router;
     private final SupervisorSafetyPlanner supervisorPlanner;
@@ -75,7 +75,7 @@ public class AssistantOrchestrator {
                                  SessionFactStore sessionFactStore,
                                  List<AgentAdvice> advices,
                                  ToolAccessPolicy toolPolicy,
-                                 ToolAccessGuard toolGuard,
+                                 ToolGateway toolGateway,
                                  BudgetGuard budgetGuard,
                                  ConversationRouter router,
                                  SupervisorSafetyPlanner supervisorPlanner,
@@ -96,7 +96,7 @@ public class AssistantOrchestrator {
         this.sessionFactStore = sessionFactStore;
         this.advices = advices;
         this.toolPolicy = toolPolicy;
-        this.toolGuard = toolGuard;
+        this.toolGateway = toolGateway;
         this.budgetGuard = budgetGuard;
         this.router = router;
         this.supervisorPlanner = supervisorPlanner;
@@ -196,9 +196,9 @@ public class AssistantOrchestrator {
         StringBuilder acc = new StringBuilder();
         Sinks.Many<SseEvent> toolSink = Sinks.many().multicast().onBackpressureBuffer();
         ToolEventPublisher toolEvents = new ToolEventPublisher(toolSink);
-        // 每请求构造工具集：ToolAccessGuard 在方法入口做真实越权校验 + 审计；
-        // BudgetGuard 在同一入口做工具调用次数熔断（T5），超限抛 AgentBlockedException 降级。
-        AgentToolkit toolkit = new AgentToolkit(toolGuard, budgetGuard, agent.getType(), req.getSessionId(),
+        // 每请求构造工具集：所有工具执行统一经 ToolGateway（T5：权限/熔断/幂等/超时/审计唯一入口）；
+        // 超限时抛 AgentBlockedException 降级。
+        AgentToolkit toolkit = new AgentToolkit(toolGateway, agent.getType(), req.getSessionId(),
                 userId, toolEvents, triageTools, assessmentRecordMapper, preOrderService);
         // 纵深防御：按声明式策略把越权工具从模型可见列表摘除（模型不会去调），
         // 真实放行/拦截决策与审计由 AgentToolkit 内的 guard.check 在调用时记录。
