@@ -1,0 +1,47 @@
+{
+  "timestamp" : "2026-11-10T11:31:42.4643358",
+  "total" : 150,
+  "passed" : 150,
+  "failed" : 0,
+  "passRate" : "100.0%",
+  "harnessP50us" : 3,
+  "harnessP95us" : 114,
+  "byCategory" : [ {
+    "total" : 45,
+    "passRate" : "100.0%",
+    "category" : "routing",
+    "passed" : 45,
+    "failed" : 0
+  }, {
+    "total" : 20,
+    "passRate" : "100.0%",
+    "category" : "continuity",
+    "passed" : 20,
+    "failed" : 0
+  }, {
+    "total" : 30,
+    "passRate" : "100.0%",
+    "category" : "state-machine",
+    "passed" : 30,
+    "failed" : 0
+  }, {
+    "total" : 30,
+    "passRate" : "100.0%",
+    "category" : "emergency",
+    "passed" : 30,
+    "failed" : 0
+  }, {
+    "total" : 15,
+    "passRate" : "100.0%",
+    "category" : "permission",
+    "passed" : 15,
+    "failed" : 0
+  }, {
+    "total" : 10,
+    "passRate" : "100.0%",
+    "category" : "budget",
+    "passed" : 10,
+    "failed" : 0
+  } ],
+  "failedCases" : [ ]
+}

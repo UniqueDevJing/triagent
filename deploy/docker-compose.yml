@@ -53,6 +53,8 @@ services:
       COZE_PAT: ${COZE_PAT}
       LLM_API_KEY: ${LLM_API_KEY}
       SPRING_PROFILES_ACTIVE: prod
+      # T8 演示环境安全化：公网演示默认开启只读账号拦截与聊天额度
+      TRIAGENT_DEMO_ENABLED: ${TRIAGENT_DEMO_ENABLED:-true}
     ports:
       - "8080:8080"
     deploy:
