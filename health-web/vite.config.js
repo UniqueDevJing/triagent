@@ -1,9 +1,11 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import path from 'path'
+
+const __dirname = import.meta.dirname
 
 export default defineConfig({
   plugins: [
@@ -42,15 +44,23 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'element-plus': ['element-plus'],
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          echarts: ['echarts'],
+        // vite 8 (rolldown) 要求 manualChunks 为函数形式，对象形式已移除
+        manualChunks(id) {
+          if (id.includes('node_modules/echarts') || id.includes('node_modules/zrender')) {
+            return 'echarts'
+          }
+          if (id.includes('node_modules/element-plus') || id.includes('node_modules/@element-plus')) {
+            return 'element-plus'
+          }
+          if (id.includes('node_modules/vue') || id.includes('node_modules/pinia') || id.includes('node_modules/@vue')) {
+            return 'vue-vendor'
+          }
         },
       },
     },
   },
-  esbuild: {
+  // vite 8 起转译内核为 oxc，esbuild.drop 已废弃，等价迁移
+  oxc: {
     drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
   },
   test: {
