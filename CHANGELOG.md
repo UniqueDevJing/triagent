@@ -15,6 +15,7 @@
 ### Changed（架构重构）
 - **AssistantOrchestrator 拆分**：569 行 → 薄编排器 + 6 策略组件（AgentRegistry 路由 / TriageDeterministicFlow 确定性分诊流 / LlmTurnAssembler LLM 轮组装 / TriageJsonParser / TurnFinalizer），策略组件可独立测试与替换；重构经 150 例 harness 门禁验证行为保持
 - **前端依赖全量升级**（T7）：npm audit 8 个漏洞全量清零（vue 3.5 / echarts 6 / vite 5→8 rolldown / vitest 5，glob/minimatch overrides）；manualChunks 函数化、oxc.drop、构建 1.8s，8 项前端测试全过（构建报告 docs/t7-frontend-build-report.md）
+- **依赖漏洞扫描进 CI**：dependency-scan job（OSS Index audit，CVSS≥7 门禁 + 匿名限流重试 3 次，聚合全部 Maven 模块），本地实测 0 高危通过；CI frontend job Node 18→20（vite 8 要求）并补 vitest 8 项
 
 ## v0.9（2026-11-10）
 
