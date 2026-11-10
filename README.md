@@ -65,18 +65,23 @@
 | 4 | **透明推理**| 工具调用经 SSE 侧通道下发 `tool_call` / `tool_result` / `plan` 事件，前端逐步展示「Agent 为什么这么走」 |
 | 5 | **RAG 溯源 + 防注入**| 疾病库/科普文章检索注入并标记「外部不可信」；来源随 `done` 回传，可点击溯源 |
 | 6 | **预约两步确认 + 幂等**| Agent 只落 PENDING 预订单（sha256 幂等键 + Redis 预占 + DB 唯一索引兜底），页面确认后转 CONFIRMED |
-| 7 | **可观测**| 每轮耗时 / turnType / 工具次数 / 紧急度分布 / 护栏命中，`/metrics` 聚合近 500 轮；HTTP 入口新增 `X-Trace-Id` 响应头，与 Agent 指标互补形成「入口延迟 + 内部编排」完整视图 |
+| 7 | **可观测**| 每轮耗时 / turnType / 工具次数 / 紧急度分布 / 护栏命中，`/metrics` 聚合近 500 轮；OTel 风格 span 树（traceId/spanId/父子关系/attributes）+ 手机/身份证/邮箱/JWT/密钥字段自动脱敏，`/trace` 只读还原单轮完整决策链 |
 | 8 | **结构化输出**| `BeanOutputConverter(TriageResult)` + 提示词内嵌 JSON Schema + 解析失败自动重试，输出稳定 |
-| 9 | **真实越权拦截 + 审计**| `ToolAccessGuard` 在每个 @Tool 方法入口校验角色授权，越权抛异常并**始终**记入审计；审计双写本地 JSONL（`assistant.tool-audit-log`），`GET /api/v1/assistant/tool-audit` 只读可查 |
+| 9 | **真实越权拦截 + 审计**| 全部工具经统一 **ToolGateway** 入口（权限 → 熔断 → 幂等 → 超时 → 审计，无绕过路径），`ToolAccessGuard` 在每个 @Tool 方法入口校验角色授权，越权抛异常并**始终**记入审计；审计双写本地 JSONL（`assistant.tool-audit-log`），`GET /api/v1/assistant/tool-audit` 只读可查 |
 | 10 | **决策日志与重放**| 每轮决策的输入特征 / 红旗命中 / 规则 / 最终裁决落 `DecisionLog`（环形窗口 + JSONL），按会话重放一致率 100%；`GET /api/v1/assistant/decision-log` 可查 |
 | 11 | **红队对抗评测**| 四维度攻击（否定句降级 / 矛盾症状 / 急症诱导降级 / 诱导越权开处方）32 条断言进 CI；配套加固：矛盾症状转澄清、急诊 override 需无红旗、处方输入+输出双拦截 |
 | 12 | **预算熔断与确定性降级**| 单会话工具调用次数 + token（chars/2 估算）双上限；LLM 超限跳过模型、按角色返回确定性安全指引（`turnType=DEGRADED`），熔断数可观测 |
 
-**量化评估（30 例 golden set + LLM-as-Judge 双轨裁判，真实 DeepSeek）**：紧急度 **0.88**· 科室命中 **28/29**· 规则综合 **9.24 / 10**· LLM 裁判安全性 **29/29 pass**· 危险方向误判（判轻）**0 例**· 确定性路径 **6–24ms（0 LLM 调用）**vs LLM 路径均值 5.3s。逐例数据与裁判意见见 [测试数据报告](docs/agent/测试数据报告.md) / [评估报告-LLM裁判](docs/agent/评估报告-LLM裁判.md) / [评估报告](docs/agent/评估报告.md)。
+**离线评测基线（150 例确定性案例，0 LLM 调用，一条命令可复现）**：覆盖意图路由 45 / 会话连续性 20 /
+状态机轨迹 30 / 红旗与安全 30 / 工具权限矩阵 15 / 预算熔断 10 六维度，**通过率 100%**，
+harness 单案例 P50=3μs / P95=114μs——编排层任何重构后跑 `mvn test -pl health-admin -Dtest=TriageEvalHarnessTest`
+即可回归，安全类案例失败即门禁不通过。指标口径与报告见 [evals/README.md](evals/README.md)。
 
-**红队回归（T4，安全评测体系）**：`docs/agent/红队评测报告.md` + `scripts/redteam_set.json`，
+**在线质量评估（30 例 golden set + LLM-as-Judge 双轨裁判，真实 DeepSeek）**：紧急度 **0.88**· 科室命中 **28/29**· 规则综合 **9.24 / 10**· LLM 裁判安全性 **29/29 pass**· 危险方向误判（判轻）**0 例**· 确定性路径 **6–24ms（0 LLM 调用）**vs LLM 路径均值 5.3s。逐例数据与裁判意见见 [测试数据报告](docs/agent/测试数据报告.md) / [评估报告-LLM裁判](docs/agent/评估报告-LLM裁判.md) / [评估报告](docs/agent/评估报告.md)。
+
+**红队回归（安全评测体系）**：`docs/agent/红队评测报告.md` + `scripts/redteam_set.json`，
 四维度对抗用例 32 条断言随 `mvn test` 进 CI（`RedTeamSafetyTest`），通过率即安全闸门——
-加固后的真实拦截路径（T2）让每条 deny 都可观测、可审计、可单测。
+加固后的真实拦截路径让每条 deny 都可观测、可审计、可单测。
 
 ---
 
@@ -127,6 +132,7 @@ flowchart LR
 | GET | `/api/v1/assistant/metrics` | Agent 运行指标（近 500 轮聚合） | Sa-Token |
 | GET | `/api/v1/assistant/tool-audit` | 工具越权审计查询（可按会话过滤，T2） | Sa-Token |
 | GET | `/api/v1/assistant/decision-log` | 决策日志查询（sessionId 精确匹配时返回完整重放序列，T3） | Sa-Token |
+| GET | `/api/v1/assistant/trace` | OTel 风格 span 树查询（已脱敏，T6） | Sa-Token |
 
 ---
 
@@ -150,6 +156,13 @@ mvn -pl health-admin spring-boot:run
 ```
 
 API 文档：<http://localhost:8080/doc.html>
+
+### 离线评测（不需要 API Key / 数据库）
+
+```bash
+mvn test -pl health-admin -Dtest=TriageEvalHarnessTest
+# 150 案例六维度回归，报告落盘 evals/reports/latest.md
+```
 
 ### 前端（3000）
 
@@ -186,8 +199,10 @@ cd health-web && npm install && npm run dev
 │   └── com.health.web.assistant/
 │       ├── agent/         SymptomStateMachine（红旗短路/矛盾澄清/override 安全）· AgentRegistry 类型
 │       ├── tool/          ToolAccessPolicy（声明式角色→工具矩阵）· ToolAccessGuard（真实拦截）
-│       │                  · ToolAuditLog（JSONL 落盘）· DecisionLog/DecisionRecord（T3）
-│       │                  · BudgetGuard（单会话工具次数 + token 预算熔断，T5）
+│       │                  · ToolGateway（权限/熔断/幂等/超时/审计唯一入口，T5）
+│       │                  · ToolAuditLog（JSONL 落盘）· DecisionLog/DecisionRecord
+│       │                  · BudgetGuard（单会话工具次数 + token 预算熔断）
+│       ├── trace/         RequestTrace（OTel 风格 span 树）· SensitiveRedactor（脱敏）· TraceStore
 │       ├── memory/        SessionFactStore · InMemorySessionFactStore（复用 FactBus）· FactBus
 │       ├── model/         TriageResult · AgentResponse · ChatRequest · SseEvent 等事件流 DTO
 │       ├── advisor/       AgentBlockedException
@@ -198,18 +213,24 @@ cd health-web && npm install && npm run dev
 ├── health-framework/      Sa-Token 配置、全局异常、SSE 工具
 ├── health-admin/           主启动模块（8080），业务编排层（接入 agent-core）
 │   └── com.health.web.assistant/
-│       ├── controller/    SSE chat / 预订单确认 / metrics / tool-audit / decision-log
-│       ├── agent/         AssistantOrchestrator（决策日志 + 预算熔断接线）· AgentRegistry
+│       ├── controller/    SSE chat / 预订单确认 / metrics / tool-audit / decision-log / trace
+│       ├── agent/         薄编排器 AssistantOrchestrator + 策略组件群：
+│       │                  AgentRegistry 路由 · TriageDeterministicFlow 确定性分诊流 ·
+│       │                  LlmTurnAssembler LLM 轮组装 · TriageJsonParser · TurnFinalizer
+│       ├── security/      演示环境安全化（T8）：DemoAccessGuard 只读拦截 ·
+│       │                  DemoQuotaService 每日额度 · DemoWebSecurityConfig 按需装配
 │       ├── advisor/       Logging(0) → InputGuardrail(10) → Rag(20) → OutputGuardrail(80) → Audit(100)
-│       ├── tool/          AgentToolkit(@Tool + 预算熔断入口) · ToolEventPublisher · TriageTools
+│       ├── tool/          AgentToolkit(@Tool + 经 ToolGateway 执行) · ToolEventPublisher · TriageTools
 │       ├── rag/           MySQL 混合检索实现（实现 core 的 KnowledgeRetriever 接口）
 │       ├── memory/        RedisSessionFactStore / AgentSessionState / SessionMemoryStore
 │       ├── service/       PreOrderService（幂等） · AgentMetricsService
 │       └── config/        AssistantMemoryConfig · AssistantConfig（ChatClient + 提示词）
+├── triagent-demo/         最小独立 demo（只依赖 agent-core，一条命令跑通 5 条确定性演示）
 ├── health-web/            Vue 3 前端（views/assistant/AssistantChat.vue 透明推理页）
-├── sql/init.sql           权威建表脚本（含 agent_preorder）
+├── evals/                 离线评测基线：150 版本化案例 + 报告生成（reports/latest.md）
+├── sql/init.sql           权威建表脚本（含 agent_preorder）；sql/demo_account.sql 演示只读账号
 ├── scripts/redteam_set.json  红队对抗评测集（四维度攻击 + 安全基线）
-├── docs/agent/            框架设计 · 评估报告 · 红队评测报告 · 测试数据报告
+├── docs/agent/            框架设计 · 架构说明 · 评估报告 · 红队评测报告 · 测试数据报告
 └── pom.xml                Spring AI BOM 1.0.0 + agent-core 模块
 ```
 
@@ -222,8 +243,12 @@ cd health-web && npm install && npm run dev
 - **Phase 3**RAG 溯源 + 分诊状态机
 - **Phase 4**可观测指标 + 前端透明推理页 + G1–G10 评估
 - **Phase 5**会话连续性路由 + 多 Agent 事实协作 + Supervisor 规划 + `plan` 事件可视化
-- **Phase 6（治理加固，T1–T5）**：`agent-core` 独立内核模块 · 真实越权拦截 + 审计 JSONL 落盘 ·
+- **Phase 6（治理加固）**：`agent-core` 独立内核模块 · 真实越权拦截 + 审计 JSONL 落盘 ·
   决策日志与会话重放 · 红队四维度对抗评测进 CI · 单会话预算熔断与确定性降级
+- **Phase 7（工程化收敛）**：AssistantOrchestrator 569→薄编排器 + 6 策略组件 ·
+  150 例离线评测基线（六维度 100%，重构门禁 ≤2pp）· ToolGateway 统一工具入口 ·
+  OTel 风格 Trace + 脱敏 · 前端依赖全量升级（npm audit 清零，vite8/vitest5）·
+  演示环境安全化（只读账号 + 每日额度）
 - **Roadmap**向量检索（pgvector/Milvus）· Supervisor 全语义规划（LLM 拆子任务）· Docker Compose 一键起
 
 ---
