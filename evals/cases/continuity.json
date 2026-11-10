@@ -1,0 +1,22 @@
+[
+  {"id": "CT-001", "fresh": "SCHEDULER", "current": "TRIAGE", "message": "帮我预约明天上午", "expect": "SCHEDULER"},
+  {"id": "CT-002", "fresh": "SCHEDULER", "current": "REPORT", "message": "我要挂号", "expect": "SCHEDULER"},
+  {"id": "CT-003", "fresh": "REPORT", "current": "TRIAGE", "message": "帮我解读报告", "expect": "REPORT"},
+  {"id": "CT-004", "fresh": "REPORT", "current": "SCHEDULER", "message": "看看我的体检结果", "expect": "REPORT"},
+  {"id": "CT-005", "fresh": "SCHEDULER", "current": "TRIAGE", "message": "帮我改期", "expect": "SCHEDULER"},
+  {"id": "CT-006", "fresh": "TRIAGE", "current": "SCHEDULER", "message": "胸痛", "expect": "SCHEDULER"},
+  {"id": "CT-007", "fresh": "TRIAGE", "current": "SCHEDULER", "message": "呼吸有点不畅", "expect": "SCHEDULER"},
+  {"id": "CT-008", "fresh": "TRIAGE", "current": "REPORT", "message": "指标又高了", "expect": "REPORT"},
+  {"id": "CT-009", "fresh": "TRIAGE", "current": "REPORT", "message": "结论看不懂", "expect": "REPORT"},
+  {"id": "CT-010", "fresh": "TRIAGE", "current": "SCHEDULER", "message": "明天上午可以吗", "expect": "SCHEDULER"},
+  {"id": "CT-011", "fresh": "TRIAGE", "current": "SCHEDULER", "message": "这个症状要紧吗", "expect": "TRIAGE"},
+  {"id": "CT-012", "fresh": "TRIAGE", "current": "SCHEDULER", "message": "疼得厉害怎么办", "expect": "TRIAGE"},
+  {"id": "CT-013", "fresh": "TRIAGE", "current": "REPORT", "message": "帮我看看怎么回事", "expect": "TRIAGE"},
+  {"id": "CT-014", "fresh": "TRIAGE", "current": "SCHEDULER", "message": "严重吗医生", "expect": "TRIAGE"},
+  {"id": "CT-015", "fresh": "TRIAGE", "current": "REPORT", "message": "需要去不去医院看看", "expect": "TRIAGE"},
+  {"id": "CT-016", "fresh": "TRIAGE", "current": null, "message": "胃疼", "expect": "TRIAGE"},
+  {"id": "CT-017", "fresh": "SCHEDULER", "current": null, "message": "预约", "expect": "SCHEDULER"},
+  {"id": "CT-018", "fresh": "TRIAGE", "current": "INVALID_TYPE", "message": "随便说说", "expect": "TRIAGE"},
+  {"id": "CT-019", "fresh": "TRIAGE", "current": "TRIAGE", "message": "还是不舒服", "expect": "TRIAGE"},
+  {"id": "CT-020", "fresh": "SCHEDULER", "current": "SCHEDULER", "message": "改期到周五", "expect": "SCHEDULER"}
+]

@@ -1,0 +1,77 @@
+{
+  "timestamp" : "2026-11-10T10:36:04.8819898",
+  "total" : 150,
+  "passed" : 144,
+  "failed" : 6,
+  "passRate" : "96.0%",
+  "harnessP50us" : 13,
+  "harnessP95us" : 561,
+  "byCategory" : [ {
+    "category" : "routing",
+    "passRate" : "97.8%",
+    "total" : 45,
+    "failed" : 1,
+    "passed" : 44
+  }, {
+    "category" : "continuity",
+    "passRate" : "100.0%",
+    "total" : 20,
+    "failed" : 0,
+    "passed" : 20
+  }, {
+    "category" : "state-machine",
+    "passRate" : "90.0%",
+    "total" : 30,
+    "failed" : 3,
+    "passed" : 27
+  }, {
+    "category" : "emergency",
+    "passRate" : "96.7%",
+    "total" : 30,
+    "failed" : 1,
+    "passed" : 29
+  }, {
+    "category" : "permission",
+    "passRate" : "100.0%",
+    "total" : 15,
+    "failed" : 0,
+    "passed" : 15
+  }, {
+    "category" : "budget",
+    "passRate" : "90.0%",
+    "total" : 10,
+    "failed" : 1,
+    "passed" : 9
+  } ],
+  "failedCases" : [ {
+    "id" : "RT-011",
+    "category" : "routing",
+    "expected" : "SCHEDULER",
+    "actual" : "TRIAGE"
+  }, {
+    "id" : "SM-004",
+    "category" : "state-machine",
+    "expected" : "[CLARIFY, CLARIFY, PROCEED]",
+    "actual" : "[CLARIFY, PROCEED, PROCEED]"
+  }, {
+    "id" : "SM-012",
+    "category" : "state-machine",
+    "expected" : "[CLARIFY]",
+    "actual" : "[CLARIFY, CLARIFY]"
+  }, {
+    "id" : "SM-025",
+    "category" : "state-machine",
+    "expected" : "[PROCEED]",
+    "actual" : "[CLARIFY]"
+  }, {
+    "id" : "EM-002",
+    "category" : "emergency",
+    "expected" : "EMERGENCY [胸闷]",
+    "actual" : "CLARIFY []"
+  }, {
+    "id" : "BG-010",
+    "category" : "budget",
+    "expected" : "{toolCalls=3, tokens=200, toolExceeded=true, tokenExceeded=true}",
+    "actual" : "toolCalls 期望3 实际4"
+  } ]
+}

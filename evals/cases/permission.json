@@ -1,0 +1,17 @@
+[
+  {"id": "PM-001", "role": "TRIAGE", "tool": "searchDiseases", "expect": true},
+  {"id": "PM-002", "role": "TRIAGE", "tool": "searchMembers", "expect": true},
+  {"id": "PM-003", "role": "TRIAGE", "tool": "getMemberAssessments", "expect": false},
+  {"id": "PM-004", "role": "TRIAGE", "tool": "createPreOrder", "expect": false},
+  {"id": "PM-005", "role": "TRIAGE", "tool": "generateImage", "expect": true},
+  {"id": "PM-006", "role": "REPORT", "tool": "searchDiseases", "expect": true},
+  {"id": "PM-007", "role": "REPORT", "tool": "searchMembers", "expect": true},
+  {"id": "PM-008", "role": "REPORT", "tool": "getMemberAssessments", "expect": true},
+  {"id": "PM-009", "role": "REPORT", "tool": "createPreOrder", "expect": false},
+  {"id": "PM-010", "role": "REPORT", "tool": "generateImage", "expect": true},
+  {"id": "PM-011", "role": "SCHEDULER", "tool": "searchDiseases", "expect": false},
+  {"id": "PM-012", "role": "SCHEDULER", "tool": "searchMembers", "expect": true},
+  {"id": "PM-013", "role": "SCHEDULER", "tool": "getMemberAssessments", "expect": false},
+  {"id": "PM-014", "role": "SCHEDULER", "tool": "createPreOrder", "expect": true},
+  {"id": "PM-015", "role": "SCHEDULER", "tool": "generateImage", "expect": false}
+]

@@ -1,0 +1,12 @@
+[
+  {"id": "BG-001", "setup": {"maxToolCalls": 3}, "steps": [{"type": "tool", "times": 2}], "expect": {"toolCalls": 2, "toolExceeded": false}},
+  {"id": "BG-002", "setup": {"maxToolCalls": 3}, "steps": [{"type": "tool", "times": 3}], "expect": {"toolCalls": 3, "toolExceeded": false}, "probe": {"consume": false}},
+  {"id": "BG-003", "setup": {"maxToolCalls": 2}, "steps": [{"type": "tool", "times": 3}], "expect": {"toolCalls": 3, "toolExceeded": true}, "probe": {"consume": false}},
+  {"id": "BG-004", "setup": {"maxTokens": 100}, "steps": [{"type": "tokens", "chars": 300}], "expect": {"tokens": 150, "tokenExceeded": true}},
+  {"id": "BG-005", "setup": {"maxTokens": 100}, "steps": [{"type": "tokens", "chars": 200}], "expect": {"tokens": 100, "tokenExceeded": false}},
+  {"id": "BG-006", "setup": {"maxTokens": 50}, "steps": [{"type": "tokens", "chars": 30}], "expect": {"tokens": 15, "tokenExceeded": false}},
+  {"id": "BG-007", "setup": {"enabled": false, "maxTokens": 10}, "steps": [{"type": "tokens", "chars": 400}], "expect": {"tokens": 0, "tokenExceeded": false}, "probe": {"consume": true}},
+  {"id": "BG-008", "setup": {"maxToolCalls": 1}, "steps": [{"type": "tool", "times": 1}], "expect": {"toolCalls": 1, "toolExceeded": false}, "probe": {"consume": false}},
+  {"id": "BG-009", "setup": {"maxTokens": 100}, "steps": [{"type": "tokens", "chars": 8}], "expect": {"tokens": 4, "tokenExceeded": false}},
+  {"id": "BG-010", "setup": {"maxToolCalls": 2, "maxTokens": 100}, "steps": [{"type": "tool", "times": 3}, {"type": "tokens", "chars": 400}], "expect": {"toolCalls": 3, "tokens": 200, "toolExceeded": true, "tokenExceeded": true}}
+]
