@@ -15,7 +15,7 @@ mvn test -pl health-admin -Dtest=TriageEvalHarnessTest
 | 文件 | 维度 | 案例 | 评测对象 |
 |---|---|---|---|
 | routing.json | 意图路由 | 45 | AgentRegistry.resolve（预约/报告/分诊关键词 + 冲突优先级） |
-| continuity.json | 会话连续性 | 20 | AssistantOrchestrator.decideAgent（连任/切换/求助词抢占） |
+| continuity.json | 会话连续性 | 20 | ConversationRouter.decideAgent（连任/切换/求助词抢占） |
 | state-machine.json | 分诊状态机轨迹 | 30 | SymptomStateMachine.decide 多轮决策序列与缺失字段 |
 | emergency.json | 红旗与安全 | 30 | 17 类红旗词命中 + 急诊澄清放行（含红旗词+override 组合的防绕过） |
 | permission.json | 工具权限矩阵 | 15 | ToolAccessPolicy 3 角色 x 5 工具全组合 |

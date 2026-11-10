@@ -38,7 +38,7 @@ class TriageEvalHarnessTest {
     private static Path repoRoot;
     private static AgentRegistry registry;
     private static SymptomStateMachine stateMachine;
-    private static AssistantOrchestrator orchestrator;
+    private static ConversationRouter router;
     private static ToolAccessPolicy policy;
 
     private record CaseResult(String id, String category, boolean passed, String expected, String actual, long nanos) {}
@@ -51,9 +51,7 @@ class TriageEvalHarnessTest {
         policy = new ToolAccessPolicy();
         registry = new AgentRegistry(policy);
         stateMachine = new SymptomStateMachine();
-        // decideAgent 不依赖任何实例字段，null 依赖即可构造（advices 传空列表避免 NPE）
-        orchestrator = new AssistantOrchestrator(null, registry, null, null, null, null,
-                null, null, null, List.of(), null, null, null, null);
+        router = new ConversationRouter();
     }
 
     private static List<Map<String, Object>> load(String file) throws IOException {
@@ -104,7 +102,7 @@ class TriageEvalHarnessTest {
             long t0 = System.nanoTime();
             String fresh = str(c, "fresh");
             String current = c.get("current") == null ? null : str(c, "current");
-            String actual = orchestrator.decideAgent(AgentType.valueOf(fresh), current, str(c, "message")).name();
+            String actual = router.decideAgent(AgentType.valueOf(fresh), current, str(c, "message")).name();
             out.add(new CaseResult(str(c, "id"), "continuity", actual.equals(str(c, "expect")),
                     str(c, "expect"), actual, System.nanoTime() - t0));
         }

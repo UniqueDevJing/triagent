@@ -1,47 +1,47 @@
 {
-  "timestamp" : "2026-11-10T10:37:34.6876686",
+  "timestamp" : "2026-11-10T10:53:27.2961474",
   "total" : 150,
   "passed" : 150,
   "failed" : 0,
   "passRate" : "100.0%",
-  "harnessP50us" : 16,
-  "harnessP95us" : 355,
+  "harnessP50us" : 4,
+  "harnessP95us" : 179,
   "byCategory" : [ {
-    "category" : "routing",
-    "passed" : 45,
-    "failed" : 0,
+    "passRate" : "100.0%",
     "total" : 45,
-    "passRate" : "100.0%"
-  }, {
-    "category" : "continuity",
-    "passed" : 20,
     "failed" : 0,
+    "passed" : 45,
+    "category" : "routing"
+  }, {
+    "passRate" : "100.0%",
     "total" : 20,
-    "passRate" : "100.0%"
-  }, {
-    "category" : "state-machine",
-    "passed" : 30,
     "failed" : 0,
+    "passed" : 20,
+    "category" : "continuity"
+  }, {
+    "passRate" : "100.0%",
     "total" : 30,
-    "passRate" : "100.0%"
-  }, {
-    "category" : "emergency",
+    "failed" : 0,
     "passed" : 30,
-    "failed" : 0,
-    "total" : 30,
-    "passRate" : "100.0%"
+    "category" : "state-machine"
   }, {
-    "category" : "permission",
-    "passed" : 15,
+    "passRate" : "100.0%",
+    "total" : 30,
     "failed" : 0,
+    "passed" : 30,
+    "category" : "emergency"
+  }, {
+    "passRate" : "100.0%",
     "total" : 15,
-    "passRate" : "100.0%"
-  }, {
-    "category" : "budget",
-    "passed" : 10,
     "failed" : 0,
+    "passed" : 15,
+    "category" : "permission"
+  }, {
+    "passRate" : "100.0%",
     "total" : 10,
-    "passRate" : "100.0%"
+    "failed" : 0,
+    "passed" : 10,
+    "category" : "budget"
   } ],
   "failedCases" : [ ]
 }
