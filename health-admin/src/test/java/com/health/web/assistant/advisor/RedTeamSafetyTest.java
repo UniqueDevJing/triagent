@@ -140,9 +140,7 @@ class RedTeamSafetyTest {
     @Test
     @DisplayName("after()：含处方建议 → 拦截并替换为安全提示")
     void afterInterceptsPrescriptionInOutput() {
-        AgentRequest req = new AgentRequest();
-        req.setSessionId("sess-redteam");
-        req.setMessage("正常诉求");
+        AgentRequest req = new AgentRequest("sess-redteam", "正常诉求");
 
         AgentResponse r1 = new AgentResponse();
         r1.setFullText("建议你每次吃2片布洛芬，连服三天");

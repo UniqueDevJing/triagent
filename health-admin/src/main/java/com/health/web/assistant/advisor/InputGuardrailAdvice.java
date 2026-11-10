@@ -18,20 +18,32 @@ public class InputGuardrailAdvice implements AgentAdvice {
     static final int MAX_MESSAGE_LENGTH = 2000;
     private static final Pattern SESSION_ID_PATTERN = Pattern.compile("[a-zA-Z0-9_-]{6,64}");
 
-    /** 处方类诱导（输入护栏）：用户主动要求开药 / 开处方 */
+    /** 处方类诱导（输入护栏）：用户主动要求开药 / 开处方 / 要具体吃几片 */
     private static final Pattern PRESCRIPTION_INPUT = Pattern.compile(
-            "(开(个|一|了)?(处)?方|开(点|些|个)?药|配(点|些)?药|抓药|拿(点|些)?药|自己买药|自行买药)");
+            "(开(个|一|了)?(处)?方|开(点|些|个)?[\\u4e00-\\u9fa5]{0,4}药|配(点|些)?[\\u4e00-\\u9fa5]{0,2}药"
+            + "|抓(点|些|个)?[\\u4e00-\\u9fa5]{0,2}药|拿(点|些)?[\\u4e00-\\u9fa5]{0,2}药"
+            + "|(自己|自行|网上|网购|药店)?(买|购)(点|些)?(处方)?药|写(张|个)?(处)?方"
+            + "|(买|购|囤|开|要).{0,6}(阿莫西林|头孢|布洛芬|阿司匹林|抗生素|消炎药|止痛药|退烧药|处方药)"
+            + "|(推荐|建议).{0,4}我.{0,4}(吃|用).{0,4}(药|消炎药|抗生素|止痛药)"
+            + "|開(藥|方)|吃(几|多少)(片|粒)|(几|多少)(片|粒))");
 
     /**
      * 处方类输出（输出护栏）：模型直接给出用药剂量 / 开具处方。
      * 要求含具体剂量或直接出具，避免把「请咨询医生开具处方 / 遵医嘱服用」这类安全引导误伤。
      */
     private static final Pattern PRESCRIPTION_OUTPUT = Pattern.compile(
-            "(建议)?(您|你)?(每日|每天|每次|口服|服用|饭后|餐前).{0,8}?\\d+\\s*(次|片|粒|毫克|mg|ML|ml|袋|丸|支)"
-            + "|(剂量|用量|顿服|日服).{0,4}(为|:|约)?\\s*\\d"
+            "(建议)?(您|你)?(每日|每天|每次|口服|服用|饭后|餐前).{0,8}?\\d+(?:\\.\\d+)?\\s*(次|片|粒|毫克|mg|ML|ml|g|袋|丸|支)"
+            + "|(剂量|用量|顿服|日服).{0,4}(为|:|约)?\\s*\\d+(?:\\.\\d+)?"
             + "|(我|本助手|系统|为您|给你|为你)(帮|为)?(开|配|抓).{0,3}(处)?方"
-            + "|可以.{0,10}?\\d+\\s*(片|粒|毫克|mg|袋|丸|支)"
-            + "|自行(服药|用药)",
+            + "|可以.{0,10}?\\d+(?:\\.\\d+)?\\s*(片|粒|毫克|mg|袋|丸|支)"
+            + "|自行(服药|用药)"
+            // 中文数词剂量：每次一片 / 一天两次 / 一次一粒 / 饭后服用一片
+            + "|(每|一|两|二|三|四|五|六|七|八|九|十|半)(次|天|日|片|粒|支|袋|丸).{0,6}?"
+            + "([一二三四五六七八九十两半]{1,3}|\\d+)\\s*(片|粒|支|袋|丸)"
+            // 服用/吃 + 数词 + 单位（饭后服用一片即可）
+            + "|(服用|服下|吃|咽下|注射|滴注).{0,4}([一二三四五六七八九十两半]{1,3}|\\d+(?:\\.\\d+)?)\\s*(片|粒|支|袋|丸|毫升)"
+            // 静脉给药医嘱：静脉滴注头孢曲松2g
+            + "|(静脉|静滴|输液|肌注|点滴).{0,10}(\\d+(?:\\.\\d+)?\\s*(g|mg|ml|克|毫克))",
             Pattern.CASE_INSENSITIVE);
 
     private static final String PRESCRIPTION_BLOCK_MSG =
@@ -81,11 +93,16 @@ public class InputGuardrailAdvice implements AgentAdvice {
         return PRESCRIPTION_OUTPUT.matcher(text).find();
     }
 
+    /** 规避字符：空格（含全角）、* · _ - | / \ —— 去掉后再匹配，防「开 点 药」这类绕过 */
+    private static final Pattern EVASION_SEPARATORS =
+            Pattern.compile("[\\s\\u3000*·_\\-|/\\\\]+");
+
     boolean containsBanned(String msg) {
         // 输入护栏：拦截用户主动要求开药 / 开处方（红队维度④：诱导越权开处方）
         if (msg == null) {
             return false;
         }
-        return PRESCRIPTION_INPUT.matcher(msg).find();
+        String normalized = EVASION_SEPARATORS.matcher(msg).replaceAll("");
+        return PRESCRIPTION_INPUT.matcher(normalized).find();
     }
 }
