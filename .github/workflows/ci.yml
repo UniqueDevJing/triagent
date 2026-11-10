@@ -23,11 +23,11 @@ jobs:
         # 会去中央仓库找而失败（2026-09-06 的 CI 红叉即此原因）。
         # 先 install 一次，后续 test 便可直接复用本地仓库中的模块 jar。
         run: mvn -q -B -pl health-admin -am install -DskipTests
-      - name: Unit tests (32 cases · state machine / idempotency / routing)
+      - name: Unit tests (270 cases · state machine / governance / eval harness / red team)
         run: mvn -q -B -pl health-admin -am test
 
   frontend:
-    name: Frontend · build
+    name: Frontend · build & unit tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,8 +36,33 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          # vite 8（T7 升级）要求 Node 20.19+ / 22.12+
+          node-version: '20'
           cache: npm
           cache-dependency-path: health-web/package-lock.json
       - run: npm ci
+      - name: Unit tests (vitest)
+        run: npm test
       - run: npm run build
+
+  dependency-scan:
+    name: Dependencies · OSS Index audit (CVSS>=7 fails)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      # 轻量漏洞扫描：OSS Index 在线漏洞库（不需要下载 NVD 全量库），
+      # 聚合全部 Maven 模块。门禁：CVSS>=7 即失败（高危无豁免不合并）。
+      # 匿名请求可能限流，重试 3 次。
+      - name: OSS Index audit
+        run: |
+          for i in 1 2 3; do
+            mvn -q -B org.sonatype.ossindex.maven:ossindex-maven-plugin:3.2.0:audit -Dossindex.cvssScoreThreshold=7 && exit 0
+            echo "attempt $i failed (可能是匿名限流), retrying in 30s..."
+            sleep 30
+          done
+          exit 1
