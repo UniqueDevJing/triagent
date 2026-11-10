@@ -88,6 +88,10 @@ jobs:
       # 轻量漏洞扫描：OSS Index 在线漏洞库（不需要下载 NVD 全量库），
       # 聚合全部 Maven 模块。门禁：CVSS>=7 即失败（高危无豁免不合并）。
       # 匿名请求可能限流，重试 3 次。
+      - name: Install all modules
+        # audit 遍历 reactor 时 health-system 等模块间依赖需要本地仓库中的 jar
+        # （与 backend job 的 2026-09-06 红叉同源），先 install 一次再 audit。
+        run: mvn -q -B install -DskipTests
       - name: OSS Index audit
         run: |
           for i in 1 2 3; do
