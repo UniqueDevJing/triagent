@@ -1,5 +1,6 @@
 package com.hospital.v2.controller;
 
+import com.hospital.v2.common.BizException;
 import com.hospital.v2.common.Result;
 import com.hospital.v2.dao.Db;
 import com.hospital.v2.service.DashboardService;
@@ -241,6 +242,49 @@ public class AdminController {
                     + "VALUES (:name,:keywords,:level,:advice)", body)));
         }
         db.update("UPDATE red_flag_rule SET name=:name, keywords=:keywords, level=:level, advice=:advice WHERE id=:id", body);
+        return Result.ok();
+    }
+
+    // ---- 症状标签库：症状→科室映射 + 删除 ----
+
+    @GetMapping("/symptom-maps")
+    public Result<?> symptomMaps() {
+        return Result.ok(db.query("SELECT m.*, d.name department_name FROM symptom_department_map m "
+                + "LEFT JOIN department d ON d.id=m.department_id ORDER BY m.symptom_keyword, m.weight DESC", Map.of()));
+    }
+
+    @PostMapping("/symptom-maps/save")
+    public Result<?> mapSave(@RequestBody Map<String, Object> body) {
+        body.put("k", String.valueOf(body.get("symptom_keyword")));
+        body.put("dept", Long.valueOf(String.valueOf(body.get("department_id"))));
+        Long id = body.get("id") == null ? null : Long.valueOf(String.valueOf(body.get("id")));
+        if (id == null) {
+            Map<String, Object> dup = db.queryOne("SELECT id FROM symptom_department_map "
+                    + "WHERE symptom_keyword=:k AND department_id=:dept",
+                    Map.of("k", String.valueOf(body.get("symptom_keyword")), "dept", body.get("dept")));
+            if (dup != null) throw new BizException("该关键词已映射到此科室");
+            return Result.ok(Map.of("id", db.insert("INSERT INTO symptom_department_map (symptom_keyword, department_id, weight) "
+                    + "VALUES (:k,:dept,:weight)", body)));
+        }
+        db.update("UPDATE symptom_department_map SET symptom_keyword=:k, department_id=:dept, weight=:weight WHERE id=:id", body);
+        return Result.ok();
+    }
+
+    @PostMapping("/symptom-maps/delete")
+    public Result<?> mapDelete(@RequestParam long id) {
+        db.update("DELETE FROM symptom_department_map WHERE id=:id", Map.of("id", id));
+        return Result.ok();
+    }
+
+    @PostMapping("/symptom-tags/delete")
+    public Result<?> tagDelete(@RequestParam long id) {
+        db.update("DELETE FROM symptom_tag WHERE id=:id", Map.of("id", id));
+        return Result.ok();
+    }
+
+    @PostMapping("/red-flags/delete")
+    public Result<?> flagDelete(@RequestParam long id) {
+        db.update("DELETE FROM red_flag_rule WHERE id=:id", Map.of("id", id));
         return Result.ok();
     }
 
