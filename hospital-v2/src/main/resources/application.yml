@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: hospital-v2
+  # 零依赖本地验证：H2 的 MySQL 兼容模式；生产用 --spring.profiles.active=mysql
+  datasource:
+    url: jdbc:h2:mem:hospital;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+      encoding: UTF-8
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+
+server:
+  port: 18092
+  servlet:
+    context-path: /v2
+
+hospital:
+  llm:
+    # 不配置 key 时走确定性离线 Mock（仍可跑通 ReAct 循环与工具调用，用于本地验证）
+    mode: ${LLM_MODE:auto}            # auto | real | mock
+    base-url: ${LLM_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    api-key: ${LLM_API_KEY:}
+    chat-model: ${LLM_CHAT_MODEL:qwen-flash}
+    embedding-model: ${LLM_EMBEDDING_MODEL:text-embedding-v3}
+    embedding-dim: 1024
+    # ReAct 分诊循环上限（视频：迭代 7/7）
+    max-agent-steps: 7
+  rag:
+    top-k: 4
+    score-threshold: 0.08
