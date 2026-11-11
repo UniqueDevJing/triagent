@@ -8,7 +8,7 @@
 CREATE TABLE user_account (
     id            BIGINT       NOT NULL AUTO_INCREMENT,
     username     VARCHAR(64)  NOT NULL,
-    password     VARCHAR(128) NOT NULL DEFAULT '123456',
+    password     VARCHAR(128) NOT NULL,
     real_name    VARCHAR(32),
     role         VARCHAR(16)  NOT NULL COMMENT 'admin|doctor|patient',
     phone        VARCHAR(20),

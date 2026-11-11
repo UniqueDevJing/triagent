@@ -4,11 +4,12 @@
 -- =====================================================================
 
 -- 1. 账号（管理员 / 医生演示号 / 患者演示号）
-INSERT INTO user_account (id, username, real_name, role, phone) VALUES
-    (1, 'admin',   '系统管理员', 'admin',   '13800000000'),
-    (2, 'doctor',  '李建国',     'doctor',  '13900000001'),
-    (3, 'patient', '张小明',     'patient', '13900000002'),
-    (4, 'huimin',  '惠民演示',   'patient', '13900000003');
+-- 演示账号初始密码均为 123456（BCrypt，不保存明文）。
+INSERT INTO user_account (id, username, password, real_name, role, phone) VALUES
+    (1, 'admin',   '$2b$10$L3wrGhs7ygQYYc6q8TnbiuzxYNGR7gH636.tJ8puL4IkDUscaKzYq', '系统管理员', 'admin',   '13800000000'),
+    (2, 'doctor',  '$2b$10$L3wrGhs7ygQYYc6q8TnbiuzxYNGR7gH636.tJ8puL4IkDUscaKzYq', '李建国',     'doctor',  '13900000001'),
+    (3, 'patient', '$2b$10$L3wrGhs7ygQYYc6q8TnbiuzxYNGR7gH636.tJ8puL4IkDUscaKzYq', '张小明',     'patient', '13900000002'),
+    (4, 'huimin',  '$2b$10$L3wrGhs7ygQYYc6q8TnbiuzxYNGR7gH636.tJ8puL4IkDUscaKzYq', '惠民演示',   'patient', '13900000003');
 
 -- 2. 科室（10 个）
 INSERT INTO department (id, name, code, description, icon) VALUES
@@ -41,6 +42,8 @@ INSERT INTO doctor (id, name, department_id, title, specialty, good_at) VALUES
     (14, '褚天明', 10, '副主任医师', '耳鼻咽喉',       '眩晕耳石症、鼻窦炎内镜手术'),
     (15, '沈书瑶', 3,  '主治医师',   '消化内镜',       '胃肠镜检查、息肉切除'),
     (16, '韩雪',   4,  '主治医师',   '神经免疫',       '重症肌无力、周围神经病');
+
+UPDATE doctor SET user_id=2 WHERE id=1;
 
 -- 4. 排班（2026-11-11 ~ 11-17 一周，AM/PM；部分号源已被消耗以体现使用率）
 INSERT INTO doctor_schedule (doctor_id, department_id, work_date, period, total_num, remain_num, status) VALUES

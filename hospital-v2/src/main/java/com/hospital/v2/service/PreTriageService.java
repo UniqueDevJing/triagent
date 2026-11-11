@@ -42,13 +42,24 @@ public class PreTriageService {
         db.insert("INSERT INTO pre_triage_message (session_id, role, content) VALUES (:session_id,:role,:content)", m);
     }
 
-    private void appendAssistant(long sessionId, String text) {
+    public void appendAssistant(long sessionId, String text) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("session_id", sessionId);
         m.put("role", "assistant");
         m.put("content", text);
         db.insert("INSERT INTO pre_triage_message (session_id, role, content) VALUES (:session_id,:role,:content)", m);
         db.update("UPDATE pre_triage_session SET update_time=CURRENT_TIMESTAMP WHERE id=:id", Map.of("id", sessionId));
+    }
+
+    public boolean streamReply(long sessionId, String userText,
+                               java.util.function.Consumer<String> onToken,
+                               java.util.function.Consumer<String> onComplete,
+                               java.util.function.Consumer<Throwable> onError) {
+        if (isLocked(sessionId)) return false;
+        return llm.streamText(PRE_SYS, "患者说：" + userText, onToken, text -> {
+            appendAssistant(sessionId, text);
+            onComplete.accept(text);
+        }, onError);
     }
 
     /** 生成助手追问（真实模型或本地脚本）。 */

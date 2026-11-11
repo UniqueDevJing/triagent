@@ -10,6 +10,8 @@ spring:
       mode: never
 
 hospital:
+  auth:
+    jwt-secret: ${AUTH_JWT_SECRET}
   llm:
     mode: ${LLM_MODE:real}
     base-url: ${LLM_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}

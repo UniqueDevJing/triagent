@@ -1,41 +1,12 @@
 <template>
-  <div>
-    <div class="card">
-      <div class="section-title">我的挂号 · REGISTRATIONS</div>
-      <div class="toolbar">
-        <el-input v-model="patientId" placeholder="患者ID" style="width:120px"></el-input>
-        <el-button type="primary" @click="load">查询</el-button>
-      </div>
-      <table>
-        <thead><tr><th>ID</th><th>科室</th><th>医生</th><th>日期</th><th>时段</th><th>状态</th></tr></thead>
-        <tbody>
-          <tr v-for="r in regs" :key="r.id">
-            <td>{{ r.id }}</td><td>{{ r.department_id }}</td><td>{{ r.doctor_id }}</td>
-            <td>{{ r.work_date }}</td><td>{{ r.period }}</td>
-            <td><span class="chip" :class="r.status==='DONE'?'ok':'warn'">{{ r.status }}</span></td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-if="!regs.length" class="dns">暂无挂号</p>
-    </div>
-
-    <div class="card">
-      <div class="section-title">电子病历 · MEDICAL RECORDS</div>
-      <table>
-        <thead><tr><th>ID</th><th>医生</th><th>主诉</th><th>诊断</th><th>状态</th><th>操作</th></tr></thead>
-        <tbody>
-          <tr v-for="r in recs" :key="r.id">
-            <td>{{ r.id }}</td><td>{{ r.doctor_name || r.doctor_id }}</td>
-            <td>{{ r.chief_complaint }}</td><td>{{ r.diagnosis }}</td>
-            <td><span class="chip" :class="r.status==='SUBMITTED'?'ok':'warn'">{{ r.status==='SUBMITTED'?'已归档':'医生书写中' }}</span></td>
-            <td>
-              <el-button size="small" type="primary" plain @click="open(r.id)">查看七段病历</el-button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-if="!recs.length" class="dns">暂无病历（医生接诊后会出现在这里）</p>
-    </div>
+  <main class="workspace records-workspace">
+    <section class="page-intro"><div><span class="eyebrow">MY CARE JOURNEY</span><h2>我的就诊时间线</h2><p>挂号、接诊与电子病历汇集在一条清晰的健康记录中。</p></div><button class="secondary-button" @click="load">刷新记录</button></section>
+    <section class="record-summary"><div><strong>{{ regs.length }}</strong><span>挂号记录</span></div><div><strong>{{ recs.length }}</strong><span>电子病历</span></div><div><strong>{{ recs.filter(r => r.status === 'SUBMITTED').length }}</strong><span>已归档病历</span></div></section>
+    <section class="care-timeline">
+      <article v-for="r in regs" :key="`reg-${r.id}`" class="care-event"><div class="event-line"><i></i></div><div class="event-date"><strong>{{ r.work_date }}</strong><small>{{ r.period }}</small></div><div class="event-card"><header><span class="eyebrow">REGISTRATION / #{{ r.id }}</span><span :class="['queue-status', r.status === 'DONE' ? 'done' : 'waiting']">{{ r.status === 'DONE' ? '已完成' : '待就诊' }}</span></header><h3>预约就诊</h3><p>科室 {{ r.department_id }} · 医生 {{ r.doctor_id }}</p></div></article>
+      <article v-for="r in recs" :key="`rec-${r.id}`" class="care-event"><div class="event-line"><i></i></div><div class="event-date"><strong>病历</strong><small>#{{ r.id }}</small></div><button class="event-card event-card--record" @click="open(r.id)"><header><span class="eyebrow">MEDICAL RECORD</span><span :class="['queue-status', r.status === 'SUBMITTED' ? 'done' : 'waiting']">{{ r.status === 'SUBMITTED' ? '已归档' : '书写中' }}</span></header><h3>{{ r.diagnosis || '诊断待完善' }}</h3><p>{{ r.chief_complaint || '暂无主诉' }}</p><footer>{{ r.doctor_name || r.doctor_id }} 医生 <span>查看完整病历 →</span></footer></button></article>
+      <div v-if="!regs.length && !recs.length" class="surface empty-state"><span>＋</span><b>还没有就诊记录</b><p>完成首次预问诊与挂号后，记录会出现在这里。</p></div>
+    </section>
 
     <el-dialog v-model="dlg" title="病历详情 · 七段结构化" width="640px">
       <template v-if="cur">
@@ -47,7 +18,7 @@
         </div>
       </template>
     </el-dialog>
-  </div>
+  </main>
 </template>
 
 <script setup>
@@ -64,18 +35,17 @@ const SEGS = [
   { key: 'treatment',       no: '⑦', label: '处理意见' }
 ]
 
-const patientId = ref(1)
 const regs = ref([])
 const recs = ref([])
 const dlg = ref(false)
 const cur = ref(null)
 
 async function load() {
-  regs.value = await api.get('/api/patient/registrations', { patientId: patientId.value })
-  recs.value = await api.get('/api/patient/records', { patientId: patientId.value })
+  regs.value = await api.get('/patient/registrations')
+  recs.value = await api.get('/patient/records')
 }
 async function open(id) {
-  cur.value = await api.get('/api/doctor/record', { recordId: id })
+  cur.value = await api.get('/patient/record/detail', { recordId: id })
   dlg.value = true
 }
 onMounted(load)
@@ -83,6 +53,6 @@ onMounted(load)
 
 <style scoped>
 .seg { margin-bottom: 10px; }
-.seg-title { font-weight: 600; color: #1f6feb; font-size: 13px; margin-bottom: 4px; }
-.seg-body { line-height: 1.7; color: #333; background: #f7f9fb; border-radius: 6px; padding: 8px 12px; font-size: 13px; }
+.seg-title { font-weight: 600; color: var(--vital-teal-d); font-size: 12px; margin-bottom: 4px; }
+.seg-body { line-height: 1.7; color: var(--vital-ink); background: var(--vital-panel-soft); border-radius: 8px; padding: 10px 12px; font-size: 12px; }
 </style>

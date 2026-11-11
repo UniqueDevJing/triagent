@@ -127,7 +127,9 @@ public class AdminController {
     public Result<?> redFlags() { return Result.ok(db.query("SELECT * FROM red_flag_rule ORDER BY level", Map.of())); }
 
     @GetMapping("/ai-models")
-    public Result<?> aiModels() { return Result.ok(db.query("SELECT * FROM ai_model_config ORDER BY sort", Map.of())); }
+    public Result<?> aiModels() { return Result.ok(db.query("SELECT id,name,provider,base_url,model,purpose,prompt_template,enabled,sort,"
+            + "CASE WHEN api_key IS NULL OR api_key='' THEN 0 ELSE 1 END has_api_key,create_time "
+            + "FROM ai_model_config ORDER BY sort", Map.of())); }
 
     // ==================== 以下为课程对齐补全：管理 CRUD / 顺延 / AI 配置 / 工具注册 / 上传 / 看板增强 ====================
 

@@ -1,29 +1,9 @@
 <template>
-  <div>
-    <div class="card">
-      <div class="section-title">AI 调用总览 · USAGE SUMMARY</div>
-      <div class="stat-grid">
-        <div class="stat"><div class="num">{{ sum.total }}</div><div class="lbl">总调用</div></div>
-        <div class="stat"><div class="num">{{ sum.success }}</div><div class="lbl">成功</div></div>
-        <div class="stat"><div class="num">{{ sum.avg_ms }}ms</div><div class="lbl">平均耗时</div></div>
-        <div class="stat warn"><div class="num">{{ sum.tokens }}</div><div class="lbl">Token 消耗</div></div>
-      </div>
-      <p class="dns" style="margin-top:10px;">本地降级（无 API Key）时 token=0；配置真实模型后此处统计真实消耗。</p>
-    </div>
-    <div class="card">
-      <div class="section-title">按场景聚合 · BY CASE</div>
-      <table>
-        <thead><tr><th>场景</th><th>次数</th><th>成功率</th><th>平均耗时</th><th>Token</th></tr></thead>
-        <tbody>
-          <tr v-for="c in byCase" :key="c.use_case">
-            <td><code>{{ c.use_case }}</code></td><td>{{ c.total }}</td>
-            <td><span class="readout">{{ rate(c) }}%</span></td>
-            <td>{{ c.avg_ms }}ms</td><td>{{ c.tokens }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <main class="workspace usage-workspace">
+    <section class="page-intro"><div><span class="eyebrow">AI OBSERVABILITY</span><h2>模型运行与成本</h2><p>从调用成功率、响应延迟到 Token 消耗，观察每一种智能场景的真实运行状态。</p></div><span class="live-badge"><i></i> DATA LIVE</span></section>
+    <section class="metric-grid metric-grid--four"><article class="metric-tile"><span>总调用</span><strong>{{ sum.total }}</strong><small>所有智能场景</small></article><article class="metric-tile"><span>成功调用</span><strong>{{ sum.success }}</strong><small>{{ sum.total ? rate({ total: sum.total, success: sum.success }) : 0 }}% 完成率</small></article><article class="metric-tile"><span>平均响应</span><strong>{{ sum.avg_ms }}<em>ms</em></strong><small>端到端模型耗时</small></article><article class="metric-tile"><span>Token 消耗</span><strong>{{ sum.tokens }}</strong><small>本地降级模式计为 0</small></article></section>
+    <section class="usage-grid"><article class="surface usage-chart"><header class="panel-head"><div><span class="eyebrow">WORKLOAD</span><h3>场景调用分布</h3></div></header><div class="bar-chart"><div v-for="c in byCase" :key="c.use_case"><span><b>{{ c.use_case }}</b><small>{{ c.total }} 次</small></span><i><b :style="{ width: `${barWidth(c)}%` }"></b></i></div><div v-if="!byCase.length" class="empty-inline">暂无调用数据</div></div></article><article class="surface reliability-list"><header class="panel-head"><div><span class="eyebrow">RELIABILITY</span><h3>场景健康度</h3></div></header><div v-for="c in byCase" :key="c.use_case" class="reliability-row"><span :class="['health-dot', Number(rate(c)) >= 95 ? 'healthy' : 'warning']"></span><div><b>{{ c.use_case }}</b><small>{{ c.avg_ms }}ms · {{ c.tokens }} tokens</small></div><strong>{{ rate(c) }}%</strong></div></article></section>
+  </main>
 </template>
 
 <script setup>
@@ -32,6 +12,7 @@ import { api } from '../../api'
 const sum = ref({ total: 0, success: 0, avg_ms: 0, tokens: 0 })
 const byCase = ref([])
 function rate(c) { return c.total ? ((c.success / c.total) * 100).toFixed(1) : '0.0' }
-async function load() { const r = await api.get('/api/admin/usage'); sum.value = r.summary; byCase.value = r.byCase }
+function barWidth(c) { const max = Math.max(...byCase.value.map(x => x.total), 1); return Math.max((c.total / max) * 100, 4) }
+async function load() { const r = await api.get('/admin/usage'); sum.value = r.summary; byCase.value = r.byCase }
 onMounted(load)
 </script>

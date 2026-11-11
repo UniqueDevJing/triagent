@@ -149,7 +149,7 @@ npm run dev          # 开发：http://127.0.0.1:5192/v2-web/ ，/v2/api 反向�
 
 **数据补齐**（依据公开医学资料）：10 科室、16 医生、44 班次（868 号源）、6 患者档案、20 症状标签、10 危急规则（+消化道大出血/严重过敏/糖尿病急症/高血压急症/活动性咯血）、41 条症状映射、3 模型配置（qwen-flash CHAT 含 prompt_template / text-embedding-v3 / qwen-plus 备用）、4 知识库 6 文档 26 片段真实医学内容。
 
-**边界项**：登录注册 JWT 体系未做（涉及全接口改造，工程量大，作为已知缺口）。
+**权限体系（本轮已补齐）**：患者自助注册与三角色登录、BCrypt 密码、JWT 无状态认证、前后端 RBAC、患者/医生业务数据归属校验，以及模型密钥脱敏。生产环境必须设置 `AUTH_JWT_SECRET`（至少 32 字符）。
 
 **部署验证**（2026-11-11 19:07 公网实测）
 - 服务器重建 `hospital_v2` 库导入新 schema/data；26 片段启动即经 text-embedding-v3 补齐 READY。
@@ -157,13 +157,12 @@ npm run dev          # 开发：http://127.0.0.1:5192/v2-web/ ，/v2/api 反向�
 - 过程修复：① 病历提交的多表 `UPDATE JOIN` 改子查询（H2 兼容）；② pom `finalName` 参数化为 `${jar.name}`（本机 jar 被锁时换名构建）。
 - 部署物：`/opt/hospital-v2/hospital-v2.jar` + `sql/` + `web/`，备份在 `backup-20261111/`；git `refactor/v2` 分支 commit `0371d3b` 已推送。
 
-### 8.1 症状标签库（2026-11-11 19:26 追加）
+### 8.2 鉴权、运行时配置与真实流式（本轮本地补齐）
 
-课程管理端第 4 项「症状标签库：维护症状标签与科室映射，标记危急征象」落地：
-- 新增 `SymptomLibrary.vue`（`/admin/symptoms`）三卡整合：① 症状标签 CRUD（行内「危急」徽标 = 标签名与危急规则命中关键词的双向包含判断）② 症状→科室映射 CRUD（`symptom_department_map` 首次暴露管理端，重复映射 400 拦截，这是分诊 Agent `department_query` 容错回退的真实载体）③ 危急征象规则 CRUD（紧急/高危/注意三级色标）。
-- 后端补 `/symptom-maps` GET/save/delete + `/symptom-tags/delete` + `/red-flags/delete`；修复 save 参数名缺 `k` 的绑定 bug。
-- 本地 H2 冒烟（新增/重复拦截/更新/删除全通）→ 公网部署（jar+dist，服务 active）→ 公网 API 41 条映射返回正常、SPA 200、新 JS bundle 加载成功。浏览器层回归被本地代理拦截（ERR_BLOCKED_BY_CLIENT，curl 证据已充分）。
-- git `a4b39c8` 已推送。
+- 新增 `/api/auth/login|register|me`，患者可自助注册；管理员、医生、患者接口按角色隔离，患者会话/建议/挂号/病历与医生接诊/病历均校验数据归属。
+- AI 模型配置与 Prompt 模板成为运行时数据源，后台启用的 CHAT 配置无需重启即可生效；密钥仅从环境变量读取，后台列表不回显。
+- 预问诊改为模型 token 回调驱动的真实 SSE，不再等待整段结果后模拟切片；完成后再一次性持久化回复。
+- 前端统一 `/v2/api`、自动携带 Bearer Token、401 回登录，并移除患者/医生 ID 手工选择及患者写病历入口。
 
 ### 8.1 症状标签库（2026-11-11 19:26 追加）
 

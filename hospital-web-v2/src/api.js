@@ -1,7 +1,22 @@
 import axios from 'axios'
 
 // 后端走 /v2 上下文；dev 下 vite 代理到 127.0.0.1:18092
-const http = axios.create({ baseURL: '/v2', timeout: 30000 })
+const http = axios.create({ baseURL: '/v2/api', timeout: 30000 })
+
+http.interceptors.request.use(config => {
+  const token = localStorage.getItem('hospital_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+http.interceptors.response.use(r => r, error => {
+  if (error.response?.status === 401) {
+    localStorage.removeItem('hospital_token')
+    localStorage.removeItem('hospital_user')
+    if (!location.pathname.endsWith('/login')) location.href = '/v2-web/login'
+  }
+  return Promise.reject(error)
+})
 
 function ok(res) {
   const body = res.data

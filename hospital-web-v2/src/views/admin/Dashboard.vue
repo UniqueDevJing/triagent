@@ -1,87 +1,85 @@
 <template>
-  <div>
-    <div class="card">
-      <div class="section-title">运营总览 · OVERVIEW</div>
-      <div class="stat-grid">
-        <div class="stat"><div class="num">{{ ov.totalSuggestion }}</div><div class="lbl">分诊建议总数</div></div>
-        <div class="stat"><div class="num">{{ ov.hitRate }}%</div><div class="lbl">挂号命中率</div></div>
-        <div class="stat"><div class="num">{{ enh.registrations }}</div><div class="lbl">挂号总量</div></div>
-        <div class="stat"><div class="num">{{ enh.slotUsage }}</div><div class="lbl">号源使用率</div></div>
-        <div class="stat danger" v-if="ov.redFlag"><div class="num">{{ ov.redFlag }}</div><div class="lbl">危急硬拦截</div></div>
-        <div class="stat warn"><div class="num">{{ ov.pendingTriage }}</div><div class="lbl">待处理预问诊</div></div>
-        <div class="stat"><div class="num">{{ ov.doctorOnline }}</div><div class="lbl">在线医生</div></div>
+  <main class="workspace command-center">
+    <section class="workspace-hero workspace-hero--dark">
+      <div>
+        <span class="eyebrow">TRIAGENT / LIVE OPERATIONS</span>
+        <h2>让每一次分诊决策<br>都清晰、可追踪。</h2>
+        <p>从患者意图识别到号源落位，统一观察 Agent 推理、工具调用与临床安全拦截。</p>
       </div>
-    </div>
+      <div class="system-pulse">
+        <span class="pulse-orbit"><i></i></span>
+        <div><strong>系统运行中</strong><small>{{ ov.doctorOnline || 0 }} 位医生在线 · {{ runs.length }} 条执行轨迹</small></div>
+      </div>
+    </section>
 
-    <div class="card">
-      <div class="section-title">按医生汇总 · 号源与挂号 · BY DOCTOR</div>
-      <table>
-        <thead><tr><th>医生</th><th>科室</th><th>职称</th><th>号源总数</th><th>已用</th><th>挂号量</th></tr></thead>
-        <tbody>
-          <tr v-for="d in enh.byDoctor || []" :key="d.id">
-            <td>{{ d.name }}</td><td>{{ d.department }}</td><td>{{ d.title }}</td>
-            <td>{{ d.slots }}</td><td>{{ d.used }}</td>
-            <td><span class="readout">{{ d.regs }}</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <section class="metric-grid metric-grid--four" aria-label="运营核心指标">
+      <article class="metric-tile"><span>分诊建议</span><strong>{{ ov.totalSuggestion || 0 }}</strong><small>累计生成的临床建议</small></article>
+      <article class="metric-tile"><span>转化命中率</span><strong>{{ ov.hitRate || 0 }}<em>%</em></strong><small>建议后完成挂号</small></article>
+      <article class="metric-tile"><span>号源使用率</span><strong>{{ enh.slotUsage || '0%' }}</strong><small>{{ enh.registrations || 0 }} 次有效挂号</small></article>
+      <article class="metric-tile" :class="{ 'metric-tile--alert': ov.redFlag }"><span>安全硬拦截</span><strong>{{ ov.redFlag || 0 }}</strong><small>{{ ov.pendingTriage || 0 }} 个会话待分诊</small></article>
+    </section>
 
-    <div class="card">
-      <div class="section-title">分科室命中率 · BY DEPARTMENT</div>
-      <table>
-        <thead><tr><th>科室</th><th>建议数</th><th>已挂号</th><th>命中率</th></tr></thead>
-        <tbody>
-          <tr v-for="d in byDept" :key="d.department">
-            <td>{{ d.department }}</td><td>{{ d.suggestion }}</td><td>{{ d.registered }}</td>
-            <td><span class="readout">{{ d.hit_rate }}%</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <section class="dashboard-grid">
+      <article class="surface pipeline-panel">
+        <header class="panel-head"><div><span class="eyebrow">AGENT PIPELINE</span><h3>实时决策链</h3></div><span class="live-badge"><i></i> LIVE</span></header>
+        <div class="pipeline-map">
+          <div class="pipeline-node"><span>01</span><b>症状理解</b><small>提取主诉与风险</small></div><i></i>
+          <div class="pipeline-node"><span>02</span><b>安全校验</b><small>红旗征象硬拦截</small></div><i></i>
+          <div class="pipeline-node"><span>03</span><b>资源匹配</b><small>科室、医生与号源</small></div><i></i>
+          <div class="pipeline-node pipeline-node--active"><span>04</span><b>建议生成</b><small>可解释推荐结果</small></div>
+        </div>
+        <div class="run-feed">
+          <button v-for="r in runs.slice(0, 5)" :key="r.run_id" :class="['run-row', { active: selected === r.run_id }]" @click="selectRun(r.run_id)">
+            <span class="run-state" :class="r.status === 'DONE' ? 'ok' : 'fail'"></span>
+            <code>#{{ r.run_id }}</code>
+            <span>{{ r.final_department_name || '正在决策' }}</span>
+            <span>{{ r.final_doctor_name || '待匹配医生' }}</span>
+            <b>{{ r.status }}</b>
+          </button>
+          <div v-if="!runs.length" class="empty-inline">暂无执行轨迹</div>
+        </div>
+      </article>
 
-    <div class="card">
-      <div class="section-title">Agent 运行轨迹 · RUNS</div>
-      <table>
-        <thead><tr><th>run_id</th><th>科室</th><th>医生</th><th>状态</th><th>操作</th></tr></thead>
-        <tbody>
-          <tr v-for="r in runs" :key="r.run_id">
-            <td><code>{{ r.run_id }}</code></td>
-            <td>{{ r.final_department_name || '—' }}</td>
-            <td>{{ r.final_doctor_name || '—' }}</td>
-            <td><span class="chip" :class="r.status==='DONE'?'ok':'fail'">{{ r.status }}</span></td>
-            <td><el-button size="small" @click="selectRun(r.run_id)">看时间线</el-button></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      <article class="surface department-panel">
+        <header class="panel-head"><div><span class="eyebrow">DEPARTMENT FIT</span><h3>科室转化表现</h3></div></header>
+        <div class="rank-list">
+          <div v-for="(d, i) in byDept" :key="d.department" class="rank-row">
+            <span class="rank-index">{{ String(i + 1).padStart(2, '0') }}</span>
+            <div><b>{{ d.department }}</b><small>{{ d.registered }} / {{ d.suggestion }} 已挂号</small><span class="progress-track"><i :style="{ width: `${Math.min(d.hit_rate || 0, 100)}%` }"></i></span></div>
+            <strong>{{ d.hit_rate }}%</strong>
+          </div>
+          <div v-if="!byDept.length" class="empty-inline">暂无科室数据</div>
+        </div>
+      </article>
+    </section>
 
-    <div class="card" v-if="selected">
-      <div class="section-title">时间线 · run #{{ selected }}</div>
-      <table>
-        <thead><tr><th>step</th><th>工具</th><th>输入</th><th>输出</th><th>耗时</th></tr></thead>
-        <tbody>
-          <tr v-for="s in timeline" :key="s.step_index">
-            <td>{{ s.step_index }}</td><td><code>{{ s.tool_code }}</code></td>
-            <td class="dns">{{ short(s.input_json) }}</td>
-            <td class="dns">{{ short(s.output_json) }}</td>
-            <td>{{ s.cost_ms }}ms</td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="section-title" style="margin-top:16px;">工具调用日志 · TOOL LOGS</div>
-      <table>
-        <thead><tr><th>工具</th><th>来源</th><th>状态</th><th>耗时</th><th>时间</th></tr></thead>
-        <tbody>
-          <tr v-for="l in toolLogs" :key="l.id">
-            <td><code>{{ l.tool_code }}</code></td><td>{{ l.source }}</td>
-            <td><span class="chip" :class="l.status==='SUCCESS'?'ok':'fail'">{{ l.status }}</span></td>
-            <td>{{ l.cost_ms }}ms</td><td class="dns">{{ l.create_time }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+    <section class="surface capacity-panel">
+      <header class="panel-head"><div><span class="eyebrow">CLINICAL CAPACITY</span><h3>医生与号源负载</h3></div><span class="panel-note">按当前排班实时计算</span></header>
+      <div class="doctor-grid">
+        <article v-for="d in (enh.byDoctor || [])" :key="d.id" class="doctor-capacity">
+          <div class="doctor-avatar">{{ (d.name || '医').slice(0, 1) }}</div>
+          <div class="doctor-meta"><b>{{ d.name }}</b><small>{{ d.department }} · {{ d.title }}</small></div>
+          <div class="capacity-readout"><strong>{{ d.used }}<em>/{{ d.slots }}</em></strong><small>已用号源</small></div>
+          <span class="progress-track"><i :style="{ width: `${capacity(d)}%` }"></i></span>
+        </article>
+        <div v-if="!(enh.byDoctor || []).length" class="empty-inline">暂无医生负载数据</div>
+      </div>
+    </section>
+
+    <section v-if="selected" class="surface trace-panel">
+      <header class="panel-head"><div><span class="eyebrow">TRACE / #{{ selected }}</span><h3>决策执行详情</h3></div><button class="text-button" @click="selected = null">关闭详情</button></header>
+      <div class="trace-grid">
+        <div class="timeline-list">
+          <article v-for="s in timeline" :key="s.step_index" class="timeline-step">
+            <span>{{ s.step_index }}</span><div><b>{{ s.tool_code }}</b><small>{{ short(s.input_json) }}</small><p>{{ short(s.output_json) }}</p></div><em>{{ s.cost_ms }}ms</em>
+          </article>
+        </div>
+        <div class="tool-log-list">
+          <article v-for="l in toolLogs" :key="l.id"><span class="run-state" :class="l.status === 'SUCCESS' ? 'ok' : 'fail'"></span><div><b>{{ l.tool_code }}</b><small>{{ l.source }} · {{ l.create_time }}</small></div><em>{{ l.cost_ms }}ms</em></article>
+        </div>
+      </div>
+    </section>
+  </main>
 </template>
 
 <script setup>
@@ -97,16 +95,17 @@ const timeline = ref([])
 const toolLogs = ref([])
 
 function short(s) { if (!s) return '—'; return s.length > 60 ? s.slice(0, 60) + '…' : s }
+function capacity(d) { return d.slots ? Math.min(Math.round((d.used / d.slots) * 100), 100) : 0 }
 async function load() {
-  ov.value = await api.get('/api/admin/dashboard/overview')
-  byDept.value = await api.get('/api/admin/dashboard/by-department')
-  runs.value = await api.get('/api/admin/dashboard/runs')
-  enh.value = await api.get('/api/admin/dashboard/enhanced')
+  ov.value = await api.get('/admin/dashboard/overview')
+  byDept.value = await api.get('/admin/dashboard/by-department')
+  runs.value = await api.get('/admin/dashboard/runs')
+  enh.value = await api.get('/admin/dashboard/enhanced')
 }
 async function selectRun(runId) {
   selected.value = runId
-  timeline.value = await api.get('/api/admin/dashboard/timeline', { runId })
-  toolLogs.value = await api.get('/api/admin/dashboard/tool-logs', { runId })
+  timeline.value = await api.get('/admin/dashboard/timeline', { runId })
+  toolLogs.value = await api.get('/admin/dashboard/tool-logs', { runId })
 }
 onMounted(load)
 </script>

@@ -1,30 +1,16 @@
 <template>
-  <div class="card">
-    <div class="section-title">AI 模型配置 · 改完立刻生效（对话/向量）</div>
-    <div style="margin-bottom:10px">
-      <el-button type="primary" size="small" @click="openNew">新增模型配置</el-button>
-    </div>
-    <el-table :data="models" size="small" border>
-      <el-table-column prop="id" label="ID" width="55" />
-      <el-table-column prop="name" label="名称" width="190" />
-      <el-table-column prop="purpose" label="用途" width="100">
-        <template #default="{ row }">
-          <el-tag size="small" :type="row.purpose === 'CHAT' ? 'primary' : 'success'">{{ row.purpose }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="model" label="模型" width="160"><template #default="{ row }"><code>{{ row.model }}</code></template></el-table-column>
-      <el-table-column prop="base_url" label="端点" />
-      <el-table-column prop="enabled" label="启用" width="70">
-        <template #default="{ row }"><el-tag size="small" :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? 'ON' : 'OFF' }}</el-tag></template>
-      </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right">
-        <template #default="{ row }">
-          <el-button size="small" link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button size="small" link :type="row.purpose === 'CHAT' ? 'success' : 'info'"
-                     :disabled="row.purpose !== 'CHAT'" @click="test(row)">连通测试</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+  <main class="workspace model-workspace">
+    <section class="page-intro"><div><span class="eyebrow">MODEL RUNTIME</span><h2>AI 模型与提示词</h2><p>将对话模型和向量模型作为可切换的运行时资源管理，配置保存后立即生效。</p></div><button class="primary-button" @click="openNew">＋ 新增模型配置</button></section>
+    <section class="model-stage">
+      <article v-for="m in models" :key="m.id" :class="['model-card', { disabled: !m.enabled }]">
+        <header><span class="provider-mark">{{ (m.provider || 'AI').slice(0, 2).toUpperCase() }}</span><span :class="['tool-state', m.enabled ? 'on' : 'off']"><i></i>{{ m.enabled ? '运行中' : '未启用' }}</span></header>
+        <span class="eyebrow">{{ m.purpose }}</span><h3>{{ m.name }}</h3><code>{{ m.model }}</code>
+        <div class="model-endpoint"><span>API ENDPOINT</span><p>{{ m.base_url }}</p></div>
+        <div class="model-capabilities"><span>{{ m.purpose === 'CHAT' ? '多轮对话' : '语义向量' }}</span><span>运行时热更新</span><span v-if="m.prompt_template">自定义 Prompt</span></div>
+        <footer><button class="secondary-button" @click="openEdit(m)">编辑配置</button><button class="text-button" :disabled="m.purpose !== 'CHAT'" @click="test(m)">连通测试 →</button></footer>
+      </article>
+      <button class="model-card model-card--new" @click="openNew"><span>＋</span><b>连接另一个模型</b><small>OpenAI-compatible API</small></button>
+    </section>
 
     <el-dialog v-model="dlg" :title="form.id ? '编辑配置' : '新增配置'" width="620px">
       <el-form label-width="110px">
@@ -62,7 +48,7 @@
         <el-descriptions-item label="模型回复">{{ testing.reply }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
-  </div>
+  </main>
 </template>
 
 <script setup>

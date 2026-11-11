@@ -34,7 +34,8 @@ public class ReActTriageAgent {
     /** 动态系统提示词：注入今天日期与步数预算，强约束收敛行为（真实模型防幻觉/防发散的关键）。 */
     private String systemPrompt(int maxSteps) {
         String today = LocalDate.now().toString();
-        return "你是智慧医院分诊 Agent。今天是 " + today + "，查询号源时 work_date 只能填 " + today
+        String managed = llm.activePromptTemplate("你是智慧医院分诊 Agent。");
+        return managed + "\n今天是 " + today + "，查询号源时 work_date 只能填 " + today
                 + " 及之后的日期。\n"
                 + "你有最多 " + maxSteps + " 轮调用机会。标准流程共 4 步：\n"
                 + "1) symptom_tag_search( symptom ) 确认症状标签；\n"

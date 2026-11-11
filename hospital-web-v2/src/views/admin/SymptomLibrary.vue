@@ -1,12 +1,8 @@
 <template>
-  <div>
-    <div class="card">
-      <div class="section-title">症状标签库 · SYMPTOM LIBRARY</div>
-      <p class="dns" style="margin:0 0 12px;line-height:1.7;">
-        维护症状标签、症状→科室映射与危急征象三层结构：标签是预问诊追问的锚点；映射表是分诊 Agent
-        <code>department_query</code> 容错回退的真实载体（科室名查不到时按关键词查此表）；危急征象命中即硬拦截转急诊。
-        标签名若出现在危急规则的命中关键词中，行内会亮出「危急」徽标。
-      </p>
+  <main class="workspace symptom-workspace">
+    <section class="page-intro"><div><span class="eyebrow">TRIAGE ONTOLOGY</span><h2>症状与安全规则图谱</h2><p>从患者表达，到科室路由，再到危急硬拦截：在一张三层规则图谱中维护分诊行为。</p></div></section>
+    <section class="rule-flow"><div><span>01</span><b>症状标签</b><small>{{ tags.length }} 个语义锚点</small></div><i>→</i><div><span>02</span><b>科室映射</b><small>{{ maps.length }} 条路由规则</small></div><i>→</i><div class="critical"><span>03</span><b>危急拦截</b><small>{{ flags.length }} 条安全规则</small></div></section>
+    <section class="surface symptom-stage">
       <div class="sym-grid">
         <!-- ① 症状标签 -->
         <div class="sym-card">
@@ -76,7 +72,7 @@
           </table>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- 标签对话框 -->
     <el-dialog v-model="tagDlg" :title="tagForm.id ? '编辑症状标签' : '新增症状标签'" width="440px">
@@ -131,7 +127,7 @@
         <el-button type="primary" @click="saveFlag">保存</el-button>
       </template>
     </el-dialog>
-  </div>
+  </main>
 </template>
 
 <script setup>
@@ -161,10 +157,10 @@ function isCritical(name) {
 
 async function load() {
   const [d, t, m, f] = await Promise.all([
-    api.get('/api/admin/departments'),
-    api.get('/api/admin/symptom-tags'),
-    api.get('/api/admin/symptom-maps'),
-    api.get('/api/admin/red-flags')
+    api.get('/admin/departments'),
+    api.get('/admin/symptom-tags'),
+    api.get('/admin/symptom-maps'),
+    api.get('/admin/red-flags')
   ])
   depts.value = d; tags.value = t; maps.value = m; flags.value = f
 }
@@ -175,7 +171,7 @@ function openTag(row) {
 }
 async function saveTag() {
   if (!tagForm.name) { ElMessage.warning('请填标签名'); return }
-  await api.post('/api/admin/symptom-tags/save', null, { ...tagForm })
+  await api.post('/admin/symptom-tags/save', null, { ...tagForm })
   ElMessage.success('已保存'); tagDlg.value = false; load()
 }
 
@@ -185,7 +181,7 @@ function openMap(row) {
 }
 async function saveMap() {
   if (!mapForm.symptom_keyword || !mapForm.department_id) { ElMessage.warning('请填关键词与科室'); return }
-  await api.post('/api/admin/symptom-maps/save', null, { ...mapForm })
+  await api.post('/admin/symptom-maps/save', null, { ...mapForm })
   ElMessage.success('已保存'); mapDlg.value = false; load()
 }
 
@@ -195,7 +191,7 @@ function openFlag(row) {
 }
 async function saveFlag() {
   if (!flagForm.name || !flagForm.keywords) { ElMessage.warning('请填征象名与命中关键词'); return }
-  await api.post('/api/admin/red-flags/save', null, { ...flagForm })
+  await api.post('/admin/red-flags/save', null, { ...flagForm })
   ElMessage.success('已保存'); flagDlg.value = false; load()
 }
 
@@ -210,9 +206,9 @@ onMounted(load)
 
 <style scoped>
 .sym-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-.sym-card { background: #f9fafc; border: 1px solid #e8edf3; border-radius: 8px; padding: 12px; }
+.sym-card { min-width:0;background:var(--vital-panel-soft);border:1px solid var(--vital-line);border-radius:12px;padding:12px;overflow:auto }
 .sym-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.sym-head b { font-size: 13px; color: #1f6feb; }
+.sym-head b { font-size: 13px; color: var(--vital-ink); }
 .sym-card table { width: 100%; font-size: 12px; }
 .sym-card th { text-align: left; color: #8a94a6; font-weight: 500; padding: 4px 6px; border-bottom: 1px solid #e8edf3; }
 .sym-card td { padding: 7px 6px; border-bottom: 1px dashed #eef2f7; vertical-align: top; }

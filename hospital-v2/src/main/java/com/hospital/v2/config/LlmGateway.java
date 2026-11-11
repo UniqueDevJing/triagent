@@ -14,6 +14,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -33,21 +35,17 @@ public class LlmGateway {
     private final HospitalProps props;
     private final Db db;
     private ChatModel model;
+    private volatile String modelSignature = "";
+    private volatile String activeModelName;
+    private volatile String activeBaseUrl;
     private final MockChatModel mock = new MockChatModel();
 
     public LlmGateway(HospitalProps props, Db db) {
         this.props = props;
         this.db = db;
-        if (useReal()) {
-            this.model = OpenAiChatModel.builder()
-                    .baseUrl(props.getLlm().getBaseUrl())
-                    .apiKey(props.getLlm().getApiKey())
-                    .modelName(props.getLlm().getChatModel())
-                    .temperature(0.3)
-                    .build();
-        } else {
-            this.model = new MockChatModel();
-        }
+        this.model = mock;
+        this.activeModelName = props.getLlm().getChatModel();
+        this.activeBaseUrl = props.getLlm().getBaseUrl();
     }
 
     public boolean isReal() { return model instanceof OpenAiChatModel; }
@@ -59,6 +57,7 @@ public class LlmGateway {
     }
 
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> tools) {
+        refreshModelFromDatabase();
         long t0 = System.currentTimeMillis();
         ChatRequest req = ChatRequest.builder().messages(messages).toolSpecifications(tools).build();
         // 离线模式：直接走确定性 Mock
@@ -72,11 +71,11 @@ public class LlmGateway {
             ChatResponse resp = model.chat(req);
             AiMessage ai = resp.aiMessage();
             TokenUsage tu = resp.tokenUsage() == null ? new TokenUsage(0, 0) : resp.tokenUsage();
-            logUsage("triage", props.getLlm().getChatModel(), tu.inputTokenCount(), tu.outputTokenCount(),
+            logUsage("triage", activeModelName, tu.inputTokenCount(), tu.outputTokenCount(),
                     (int) (System.currentTimeMillis() - t0), true, null);
             return Response.from(ai, tu, resp.finishReason(), Map.of());
         } catch (Exception e) {
-            logUsage("triage", props.getLlm().getChatModel(), 0, 0, (int) (System.currentTimeMillis() - t0), false, e.getMessage());
+            logUsage("triage", activeModelName, 0, 0, (int) (System.currentTimeMillis() - t0), false, e.getMessage());
             // 真实模型不可用（限流 / 网络抖动 / Key 失效）时优雅降级到离线 Mock，保证分诊链路不中断
             org.slf4j.LoggerFactory.getLogger(LlmGateway.class)
                     .warn("真实 LLM 调用失败，降级到 Mock：{}", e.getMessage());
@@ -87,6 +86,7 @@ public class LlmGateway {
 
     /** 无工具的普通对话（预问诊追问用）。真实模式失败则降级返回 null，由调用方走本地脚本。 */
     public String chatText(String system, String user) {
+        refreshModelFromDatabase();
         if (!isReal()) return null;
         try {
             ChatRequest req = ChatRequest.builder()
@@ -98,6 +98,68 @@ public class LlmGateway {
                     .warn("真实 LLM 对话失败，降级到本地脚本：{}", e.getMessage());
             return null;
         }
+    }
+
+    /** 真实模型按 token 回调；Mock 模式返回 false，由调用方使用确定性脚本。 */
+    public boolean streamText(String system, String user,
+                              java.util.function.Consumer<String> onToken,
+                              java.util.function.Consumer<String> onComplete,
+                              java.util.function.Consumer<Throwable> onError) {
+        refreshModelFromDatabase();
+        if (!isReal()) return false;
+        long t0 = System.currentTimeMillis();
+        StringBuilder full = new StringBuilder();
+        OpenAiStreamingChatModel streaming = OpenAiStreamingChatModel.builder()
+                .baseUrl(activeBaseUrl).apiKey(props.getLlm().getApiKey())
+                .modelName(activeModelName).temperature(0.3).build();
+        ChatRequest request = ChatRequest.builder()
+                .messages(List.of(SystemMessage.from(system), UserMessage.from(user))).build();
+        streaming.chat(request, new StreamingChatResponseHandler() {
+            @Override public void onPartialResponse(String partial) {
+                if (partial != null) { full.append(partial); onToken.accept(partial); }
+            }
+            @Override public void onCompleteResponse(ChatResponse response) {
+                TokenUsage tu = response.tokenUsage() == null ? new TokenUsage(0, 0) : response.tokenUsage();
+                logUsage("pre_triage", activeModelName, tu.inputTokenCount(), tu.outputTokenCount(),
+                        (int) (System.currentTimeMillis() - t0), true, null);
+                onComplete.accept(full.toString());
+            }
+            @Override public void onError(Throwable error) {
+                logUsage("pre_triage", activeModelName, 0, 0,
+                        (int) (System.currentTimeMillis() - t0), false, error.getMessage());
+                onError.accept(error);
+            }
+        });
+        return true;
+    }
+
+    /** 管理端启用的 CHAT 配置是运行时权威来源；修改后下一次调用即生效。密钥只取环境配置。 */
+    public synchronized void refreshModelFromDatabase() {
+        if (!useReal()) {
+            model = mock;
+            modelSignature = "mock";
+            return;
+        }
+        Map<String, Object> row = db.queryOne("SELECT base_url,model FROM ai_model_config "
+                + "WHERE purpose='CHAT' AND enabled=1 ORDER BY sort,id LIMIT 1", Map.of());
+        String baseUrl = row == null || row.get("base_url") == null || String.valueOf(row.get("base_url")).isBlank()
+                ? props.getLlm().getBaseUrl() : String.valueOf(row.get("base_url"));
+        String modelName = row == null || row.get("model") == null || String.valueOf(row.get("model")).isBlank()
+                ? props.getLlm().getChatModel() : String.valueOf(row.get("model"));
+        String signature = baseUrl + "|" + modelName;
+        if (signature.equals(modelSignature) && model instanceof OpenAiChatModel) return;
+        model = OpenAiChatModel.builder().baseUrl(baseUrl).apiKey(props.getLlm().getApiKey())
+                .modelName(modelName).temperature(0.3).build();
+        activeModelName = modelName;
+        activeBaseUrl = baseUrl;
+        modelSignature = signature;
+    }
+
+    public String activePromptTemplate(String fallback) {
+        Map<String, Object> row = db.queryOne("SELECT prompt_template FROM ai_model_config "
+                + "WHERE purpose='CHAT' AND enabled=1 AND prompt_template IS NOT NULL ORDER BY sort,id LIMIT 1", Map.of());
+        if (row == null || row.get("prompt_template") == null || String.valueOf(row.get("prompt_template")).isBlank()) return fallback;
+        return String.valueOf(row.get("prompt_template"));
     }
 
     private void logUsage(String useCase, String model, int pt, int ct, int ms, boolean ok, String err) {

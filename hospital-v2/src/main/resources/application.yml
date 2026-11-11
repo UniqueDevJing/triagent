@@ -1,4 +1,6 @@
 spring:
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   application:
     name: hospital-v2
   # 零依赖本地验证：H2 的 MySQL 兼容模式；生产用 --spring.profiles.active=mysql
@@ -24,6 +26,10 @@ server:
     context-path: /v2
 
 hospital:
+  auth:
+    # 生产必须用环境变量覆盖；默认值仅用于本地 H2 演示。
+    jwt-secret: ${AUTH_JWT_SECRET:triagent-hospital-v2-local-only-secret-change-me}
+    token-hours: ${AUTH_TOKEN_HOURS:8}
   llm:
     # 不配置 key 时走确定性离线 Mock（仍可跑通 ReAct 循环与工具调用，用于本地验证）
     mode: ${LLM_MODE:auto}            # auto | real | mock

@@ -1,18 +1,20 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import Tools from '../views/admin/Tools.vue'
-import Knowledge from '../views/admin/Knowledge.vue'
-import Dashboard from '../views/admin/Dashboard.vue'
-import Usage from '../views/admin/Usage.vue'
-import BaseData from '../views/admin/BaseData.vue'
-import AiConfig from '../views/admin/AiConfig.vue'
-import SymptomLibrary from '../views/admin/SymptomLibrary.vue'
-import PreTriage from '../views/patient/PreTriage.vue'
-import Records from '../views/patient/Records.vue'
-import DoctorConsole from '../views/doctor/DoctorConsole.vue'
+const Tools = () => import('../views/admin/Tools.vue')
+const Knowledge = () => import('../views/admin/Knowledge.vue')
+const Dashboard = () => import('../views/admin/Dashboard.vue')
+const Usage = () => import('../views/admin/Usage.vue')
+const BaseData = () => import('../views/admin/BaseData.vue')
+const AiConfig = () => import('../views/admin/AiConfig.vue')
+const SymptomLibrary = () => import('../views/admin/SymptomLibrary.vue')
+const PreTriage = () => import('../views/patient/PreTriage.vue')
+const Records = () => import('../views/patient/Records.vue')
+const DoctorConsole = () => import('../views/doctor/DoctorConsole.vue')
+const Login = () => import('../views/Login.vue')
 
 const routes = [
-  { path: '/', redirect: '/admin/tools' },
+  { path: '/', redirect: '/patient/pre' },
+  { path: '/login', name: 'login', component: Login, meta: { public: true, title: '登录' } },
   { path: '/admin/tools', name: 'tools', component: Tools, meta: { group: 'admin', title: '工具注册表', tag: 'MCP' } },
   { path: '/admin/knowledge', name: 'knowledge', component: Knowledge, meta: { group: 'admin', title: '医学知识库', tag: 'RAG' } },
   { path: '/admin/aiconfig', name: 'aiconfig', component: AiConfig, meta: { group: 'admin', title: 'AI 模型配置', tag: 'LLM' } },
@@ -25,7 +27,24 @@ const routes = [
   { path: '/patient/records', name: 'records', component: Records, meta: { group: 'patient', title: '我的就诊', tag: 'EMR' } }
 ]
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory('/v2-web/'),
-  routes
+  routes,
+  scrollBehavior() {
+    return { top: 0, left: 0 }
+  }
 })
+
+router.beforeEach(to => {
+  if (to.meta.public) return true
+  const token = localStorage.getItem('hospital_token')
+  const user = JSON.parse(localStorage.getItem('hospital_user') || 'null')
+  if (!token || !user) return '/login'
+  const group = to.meta.group
+  if (group && group !== user.role && user.role !== 'admin') {
+    return user.role === 'doctor' ? '/doctor/console' : '/patient/pre'
+  }
+  return true
+})
+
+export default router

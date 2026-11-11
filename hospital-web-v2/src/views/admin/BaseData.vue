@@ -1,6 +1,9 @@
 <template>
-  <div class="card">
-    <el-tabs v-model="tab">
+  <main class="workspace data-workspace">
+    <section class="page-intro"><div><span class="eyebrow">HOSPITAL MASTER DATA</span><h2>医院资源数据台</h2><p>统一维护科室、医生、排班、患者档案与分诊规则，所有变化直接进入实时业务链路。</p></div></section>
+    <section class="data-summary"><button :class="{ active: tab === 'dept' }" @click="tab='dept'"><strong>{{ depts.length }}</strong><span>科室</span></button><button :class="{ active: tab === 'doctor' }" @click="tab='doctor'"><strong>{{ doctors.length }}</strong><span>医生</span></button><button :class="{ active: tab === 'sched' }" @click="tab='sched'"><strong>{{ schedules.length }}</strong><span>排班号源</span></button><button :class="{ active: tab === 'patient' }" @click="tab='patient'"><strong>{{ patients.length }}</strong><span>患者档案</span></button><button :class="{ active: tab === 'tag' }" @click="tab='tag'"><strong>{{ tags.length }}</strong><span>症状标签</span></button><button :class="{ active: tab === 'flag' }" @click="tab='flag'"><strong>{{ flags.length }}</strong><span>危急规则</span></button></section>
+    <section class="surface data-table-stage">
+    <el-tabs v-model="tab" class="data-tabs">
       <!-- 科室 -->
       <el-tab-pane label="科室" name="dept">
         <div style="margin-bottom:10px"><el-button type="primary" size="small" @click="open('dept')">新增科室</el-button></div>
@@ -182,7 +185,8 @@
         <el-button type="primary" @click="postpone">执行顺延</el-button>
       </template>
     </el-dialog>
-  </div>
+    </section>
+  </main>
 </template>
 
 <script setup>
