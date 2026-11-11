@@ -121,7 +121,13 @@ npm run dev          # 开发：http://127.0.0.1:5192/v2-web/ ，/v2/api 反向�
 | 生产 MySQL | ✅ 本机 MySQL 9.2 实跑：23 表一次导入成功，6 工具真开关/分诊/挂号/看板全链路在 MySQL 上复验通过 |
 | 浏览器回归 | ✅ agent-browser 真实点击：工具注册表→看板→预问诊（SSE 追问）→发起分诊（真实模型）→挂号预约，全程无 JS 报错，截图确认 VITAL 视觉无错乱 |
 
-> 唯一边界：前端**仍未部署公网**（按「本地验证」决策）。需要上线时 `npm run build` 后将 `dist/` 挂到 nginx `/v2-web/`、后端 jar 注册 systemd 即可。
+> **已部署公网（2026-11-11）**：
+> - 入口：`http://114.215.186.113/v2-web/` 与 `https://uniquedevjing.me:8443/v2-web/`
+> - 服务器：root@114.215.186.113；后端 systemd `hospital-v2.service`（`/opt/hospital-v2/hospital-v2.jar`，JVM `-Xmx256m -XX:+UseSerialGC`，端口 127.0.0.1:18092，`SPRING_PROFILES_ACTIVE=mysql`）
+> - 数据库：服务器 MySQL `hospital_v2` 库（23 表，用户复用 `health`）；真实模型 Key 在 `/opt/hospital-v2/hospital-v2.env`（chmod 600）
+> - 前端：`/opt/hospital-v2/web/`，nginx `hospital-v2-locations.conf`（assets 长缓存 + index no-cache + SPA fallback + SSE 禁压），include 挂在 crossborder(80)/domain-https(80,8443)/ip-root(80) 四个 server 块
+> - 注意：IP 直连入口是 `sites-enabled/ip-root`（不是 crossborder 的 `server_name _`），新增子路径必须同时在 ip-root 补 include，否则 IP 访问 404 落到 FastAPI catch-all
+> - 回滚：备份 `dist.bak` 机制沿用；停服 `systemctl stop hospital-v2`；nginx 摘除 include + reload 即完全下线
 
 ---
 
