@@ -45,12 +45,31 @@
           4. 命中危急（如胸痛大汗）会硬拦截转急诊科。
         </p>
       </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="section-title">个人档案 · PROFILE</div>
+        <table>
+          <tbody>
+            <tr><td class="dns">姓名</td><td><el-input v-model="profile.name" size="small" style="width:160px"></el-input></td></tr>
+            <tr><td class="dns">性别</td><td>
+              <el-radio-group v-model="profile.gender" size="small">
+                <el-radio-button label="男">男</el-radio-button>
+                <el-radio-button label="女">女</el-radio-button>
+              </el-radio-group></td></tr>
+            <tr><td class="dns">年龄</td><td><el-input-number v-model="profile.age" size="small" :min="0" :max="120" style="width:130px"></el-input-number></td></tr>
+            <tr><td class="dns">慢病史</td><td><el-input v-model="profile.past_history" type="textarea" :rows="2" placeholder="如：高血压 8 年"></el-input></td></tr>
+            <tr><td class="dns">过敏史</td><td><el-input v-model="profile.allergic_history" type="textarea" :rows="2" placeholder="如：青霉素过敏"></el-input></td></tr>
+          </tbody>
+        </table>
+        <el-button type="primary" style="margin-top:12px;width:100%" :loading="saving" @click="saveProfile">保存档案</el-button>
+        <p class="dns" style="margin:8px 0 0;">档案会进入分诊上下文，慢病史/过敏史参与推荐与安全校验。</p>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../../api'
 
@@ -64,6 +83,25 @@ const sug = ref({})
 const registered = ref(false)
 const reg = ref({})
 const box = ref(null)
+const saving = ref(false)
+const profile = reactive({ name: '', gender: '男', age: null, past_history: '', allergic_history: '' })
+
+async function loadProfile() {
+  const p = await api.get('/api/patient/profile', { patientId: patientId.value })
+  if (p) Object.assign(profile, {
+    name: p.name || '', gender: p.gender || '男', age: p.age,
+    past_history: p.past_history || '', allergic_history: p.allergic_history || ''
+  })
+}
+async function saveProfile() {
+  saving.value = true
+  try {
+    await api.post('/api/patient/profile/save', null, { id: patientId.value, ...profile })
+    ElMessage.success('档案已保存')
+  } finally { saving.value = false }
+}
+watch(patientId, loadProfile)
+onMounted(loadProfile)
 
 function scroll() { nextTick(() => { if (box.value) box.value.scrollTop = box.value.scrollHeight }) }
 async function start() {

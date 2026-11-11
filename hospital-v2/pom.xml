@@ -22,6 +22,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <langchain4j.version>1.15.0</langchain4j.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jar.name>hospital-v2</jar.name>
     </properties>
 
     <dependencies>
@@ -66,11 +67,14 @@
     </dependencies>
 
     <build>
-        <finalName>hospital-v2</finalName>
+        <finalName>${jar.name}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skipped>${boot.repackage.skip}</skipped>
+                </configuration>
             </plugin>
         </plugins>
     </build>

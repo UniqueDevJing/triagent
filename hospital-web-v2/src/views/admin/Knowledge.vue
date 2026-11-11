@@ -10,6 +10,14 @@
         <el-input v-model="newContent" placeholder="文档内容（自动切片+向量化）" style="width:300px"></el-input>
         <el-button type="primary" @click="addDoc">入库</el-button>
       </div>
+      <div class="toolbar" style="margin-top:10px;">
+        <el-upload :show-file-list="false" accept=".txt,.md" :auto-upload="false"
+                   :on-change="onFilePick" :disabled="!baseId">
+          <el-button type="success" plain :disabled="!baseId">上传文档文件（txt / md）</el-button>
+        </el-upload>
+        <span v-if="pickFile" class="readout">已选：{{ pickFile.name }}（{{ (pickFile.size/1024).toFixed(1) }} KB）</span>
+        <el-button v-if="pickFile" type="success" :loading="uploading" @click="doUpload">解析并向量化入库</el-button>
+      </div>
       <table>
         <thead><tr><th>文档ID</th><th>标题</th><th>状态</th></tr></thead>
         <tbody>
@@ -50,6 +58,26 @@ const newContent = ref('')
 const q = ref('')
 const hits = ref([])
 const searched = ref(false)
+const pickFile = ref(null)
+const uploading = ref(false)
+
+function onFilePick(file) { pickFile.value = file.raw }
+async function doUpload() {
+  if (!pickFile.value || !baseId.value) return
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', pickFile.value)
+    await fetch(`/v2/api/admin/knowledge/upload?baseId=${baseId.value}`, { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(b => { if (b.code !== 200) throw new Error(b.msg || '上传失败') })
+    ElMessage.success('文件已解析、切片并向量化入库')
+    pickFile.value = null
+    loadDocs()
+  } catch (e) {
+    ElMessage.error(e.message || '上传失败')
+  } finally { uploading.value = false }
+}
 
 async function loadBases() {
   bases.value = await api.get('/api/admin/knowledge/bases')

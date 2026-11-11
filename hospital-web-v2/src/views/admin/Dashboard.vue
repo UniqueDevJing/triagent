@@ -5,10 +5,26 @@
       <div class="stat-grid">
         <div class="stat"><div class="num">{{ ov.totalSuggestion }}</div><div class="lbl">分诊建议总数</div></div>
         <div class="stat"><div class="num">{{ ov.hitRate }}%</div><div class="lbl">挂号命中率</div></div>
+        <div class="stat"><div class="num">{{ enh.registrations }}</div><div class="lbl">挂号总量</div></div>
+        <div class="stat"><div class="num">{{ enh.slotUsage }}</div><div class="lbl">号源使用率</div></div>
         <div class="stat danger" v-if="ov.redFlag"><div class="num">{{ ov.redFlag }}</div><div class="lbl">危急硬拦截</div></div>
         <div class="stat warn"><div class="num">{{ ov.pendingTriage }}</div><div class="lbl">待处理预问诊</div></div>
         <div class="stat"><div class="num">{{ ov.doctorOnline }}</div><div class="lbl">在线医生</div></div>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">按医生汇总 · 号源与挂号 · BY DOCTOR</div>
+      <table>
+        <thead><tr><th>医生</th><th>科室</th><th>职称</th><th>号源总数</th><th>已用</th><th>挂号量</th></tr></thead>
+        <tbody>
+          <tr v-for="d in enh.byDoctor || []" :key="d.id">
+            <td>{{ d.name }}</td><td>{{ d.department }}</td><td>{{ d.title }}</td>
+            <td>{{ d.slots }}</td><td>{{ d.used }}</td>
+            <td><span class="readout">{{ d.regs }}</span></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="card">
@@ -75,6 +91,7 @@ import { api } from '../../api'
 const ov = ref({})
 const byDept = ref([])
 const runs = ref([])
+const enh = ref({})
 const selected = ref(null)
 const timeline = ref([])
 const toolLogs = ref([])
@@ -84,6 +101,7 @@ async function load() {
   ov.value = await api.get('/api/admin/dashboard/overview')
   byDept.value = await api.get('/api/admin/dashboard/by-department')
   runs.value = await api.get('/api/admin/dashboard/runs')
+  enh.value = await api.get('/api/admin/dashboard/enhanced')
 }
 async function selectRun(runId) {
   selected.value = runId

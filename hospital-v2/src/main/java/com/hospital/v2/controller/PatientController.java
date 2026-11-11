@@ -24,13 +24,16 @@ public class PatientController {
     private final ReActTriageAgent agent;
     private final RegistrationService registration;
     private final MedicalRecordService records;
+    private final com.hospital.v2.dao.Db db;
 
     public PatientController(PreTriageService preTriage, ReActTriageAgent agent,
-                             RegistrationService registration, MedicalRecordService records) {
+                             RegistrationService registration, MedicalRecordService records,
+                             com.hospital.v2.dao.Db db) {
         this.preTriage = preTriage;
         this.agent = agent;
         this.registration = registration;
         this.records = records;
+        this.db = db;
     }
 
     @PostMapping("/session")
@@ -79,24 +82,37 @@ public class PatientController {
         return Result.ok(registration.myRegistrations(patientId));
     }
 
+    /** 新建病历草稿（七段结构化，任意段落可为空，可继续编辑）。 */
     @PostMapping("/record")
-    public Result<?> record(@RequestParam long registrationId, @RequestParam Long patientId,
-                            @RequestParam Long doctorId, @RequestParam String chief,
-                            @RequestParam String present, @RequestParam String diagnosis,
-                            @RequestParam String treatment) {
-        long id = records.create(registrationId, patientId, doctorId, chief, present, diagnosis, treatment);
-        return Result.ok(Map.of("recordId", id));
+    public Result<?> record(@RequestBody Map<String, Object> body) {
+        return Result.ok(Map.of("recordId", records.saveDraft(body)));
     }
 
-    @PostMapping("/record/sign")
+    /** 提交病历：草稿 → SUBMITTED 锁定。 */
+    @PostMapping("/record/submit")
     public Result<?> sign(@RequestParam long recordId) {
-        records.sign(recordId);
+        records.submit(recordId);
         return Result.ok();
     }
 
     @GetMapping("/records")
     public Result<?> records(@RequestParam Long patientId) {
         return Result.ok(records.myRecords(patientId));
+    }
+
+    // ---- 个人档案（查看/维护性别、年龄、慢病史、过敏史） ----
+    @GetMapping("/profile")
+    public Result<?> profile(@RequestParam Long patientId) {
+        return Result.ok(db.queryOne("SELECT * FROM patient_profile WHERE id=:id", Map.of("id", patientId)));
+    }
+
+    @PostMapping("/profile/save")
+    public Result<?> profileSave(@RequestBody Map<String, Object> body) {
+        Long id = body.get("id") == null ? null : Long.valueOf(String.valueOf(body.get("id")));
+        if (id == null) return Result.fail(400, "缺少患者 id");
+        db.update("UPDATE patient_profile SET name=:name, gender=:gender, age=:age, "
+                + "allergic_history=:allergic_history, past_history=:past_history WHERE id=:id", body);
+        return Result.ok();
     }
 
     private List<String> chunk(String text) {
