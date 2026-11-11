@@ -164,3 +164,11 @@ npm run dev          # 开发：http://127.0.0.1:5192/v2-web/ ，/v2/api 反向�
 - 后端补 `/symptom-maps` GET/save/delete + `/symptom-tags/delete` + `/red-flags/delete`；修复 save 参数名缺 `k` 的绑定 bug。
 - 本地 H2 冒烟（新增/重复拦截/更新/删除全通）→ 公网部署（jar+dist，服务 active）→ 公网 API 41 条映射返回正常、SPA 200、新 JS bundle 加载成功。浏览器层回归被本地代理拦截（ERR_BLOCKED_BY_CLIENT，curl 证据已充分）。
 - git `a4b39c8` 已推送。
+
+### 8.1 症状标签库（2026-11-11 19:26 追加）
+
+课程管理端第 4 项「症状标签库：维护症状标签与科室映射，标记危急征象」落地：
+- 新增 `SymptomLibrary.vue`（`/admin/symptoms`）三卡整合：① 症状标签 CRUD（行内「危急」徽标 = 标签名与危急规则命中关键词的双向包含判断）② 症状→科室映射 CRUD（`symptom_department_map` 首次暴露管理端，重复映射 400 拦截，这是分诊 Agent `department_query` 容错回退的真实载体）③ 危急征象规则 CRUD（紧急/高危/注意三级色标）。
+- 后端补 `/symptom-maps` GET/save/delete + `/symptom-tags/delete` + `/red-flags/delete`；修复 save 参数名缺 `k` 的绑定 bug。
+- 本地 H2 冒烟（新增/重复拦截/更新/删除全通）→ 公网部署（jar+dist，服务 active）→ 公网 API 41 条映射返回正常、SPA 200、新 JS bundle 加载成功。浏览器层回归被本地代理拦截（ERR_BLOCKED_BY_CLIENT，curl 证据已充分）。
+- git `a4b39c8` 已推送。
