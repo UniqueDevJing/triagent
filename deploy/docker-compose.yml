@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: health-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: health_management
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./mysql.cnf:/etc/mysql/conf.d/custom.cnf
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+
+  redis:
+    image: redis:7-alpine
+    container_name: health-redis
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 64mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: health-backend
+    restart: always
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      AGENT_API_KEY: ${AGENT_API_KEY}
+      COZE_PAT: ${COZE_PAT}
+      LLM_API_KEY: ${LLM_API_KEY}
+      SPRING_PROFILES_ACTIVE: prod
+    ports:
+      - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: health-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    deploy:
+      resources:
+        limits:
+          memory: 48M
+
+volumes:
+  mysql_data:
+  redis_data:

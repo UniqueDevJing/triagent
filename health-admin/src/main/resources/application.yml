@@ -1,0 +1,86 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: health-admin
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  ai:
+    # ── P1-5 MCP 工具层（SSE transport，默认 /sse + /mcp/message）──
+    # 只发布「无 PII、无状态、只读」的确定性工具；会员/评估/下单仍在进程内受
+    # ToolAccessGuard + Sa-Token 双重管控。设 TRIAGENT_MCP_ENABLED=false 可整体关闭。
+    mcp:
+      server:
+        enabled: ${TRIAGENT_MCP_ENABLED:true}
+        name: triagent-tools
+        version: 1.0.0
+        type: SYNC
+        instructions: 只读医疗知识工具；不含患者数据、不含写操作
+        capabilities:
+          tool: true
+          resource: false
+          prompt: false
+          completion: false
+        sse-endpoint: /sse
+        sse-message-endpoint: /mcp/message
+    openai:
+        # 兜底占位：Spring AI 的 AutoConfiguration 在 api-key 为空时会 Assert 失败，
+      # 导致「没有配置密钥就整个应用起不来」，前端页面自然打不开。
+      # 这里给明确占位值：应用能启动、界面可用；真实模型调用会失败并给出清晰错误。
+      # 生产请务必注入真实 LLM_API_KEY。
+      api-key: ${LLM_API_KEY:not-configured-please-set-LLM_API_KEY}
+      # 注意：Spring AI 会在 base-url 后自行拼接 /v1/chat/completions，
+      # 因此这里必须是根地址（不带 /v1），与 .env 中 LLM_BASE_URL 可能带 /v1 相区分。
+      base-url: ${LLM_BASE_URL_ROOT:https://api.deepseek.com}
+      chat:
+        options:
+          model: ${LLM_MODEL:deepseek-chat}
+          temperature: 0.3
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+sa-token:
+  token-name: Authorization
+  timeout: 2592000
+  is-concurrent: true
+  is-share: false
+  token-style: tik
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+health:
+  data-init:
+    enabled: true
+
+# Agent 治理配置（T2 审计落盘 / T3 决策日志 / T5 预算熔断 / T-A 向量检索腿）
+assistant:
+  # 审计与决策日志 JSONL 落盘路径（留空则仅内存环形窗口，不落盘）
+  tool-audit-log: ${ASSISTANT_TOOL_AUDIT_LOG:}
+  decision-log: ${ASSISTANT_DECISION_LOG:}
+  # T-A 向量检索腿：关键词 + 向量 RRF 融合。默认关闭——须先按
+  # docs/agent/向量检索评测方案.md 在部署环境跑出增量数字，证明有收益再开启。
+  # 开启后嵌入 API key 缺失/调用失败时自动降级纯关键词（RAG 可用性不受影响）。
+  vector-rag:
+    enabled: ${ASSISTANT_VECTOR_RAG_ENABLED:false}
+    base-url: ${ASSISTANT_VECTOR_RAG_BASE:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    api-key: ${ASSISTANT_VECTOR_RAG_KEY:${LLM_API_KEY:}}
+    model: ${ASSISTANT_VECTOR_RAG_MODEL:text-embedding-v3}
+  # 单会话成本/延迟预算（T5）：超限后工具调用被熔断、LLM 路径降级为确定性规则
+  budget:
+    enabled: true
+    max-tool-calls: 20        # 单会话工具调用次数上限
+    max-tokens: 60000         # 单会话 token 预算上限（输出侧 chars/2 估算）

@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+  cache:
+    type: redis
+
+logging:
+  level:
+    com.chuanzhi.health: INFO
+    org.springframework.security: WARN
+  file:
+    path: ./logs

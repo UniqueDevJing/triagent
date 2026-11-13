@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.health</groupId>
+        <artifactId>health-management-system</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <artifactId>health-admin</artifactId>
+    <packaging>jar</packaging>
+    <dependencies>
+        <dependency>
+            <groupId>com.health</groupId>
+            <artifactId>health-framework</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.health</groupId>
+            <artifactId>agent-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid-spring-boot-3-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+            <version>${spring-ai.version}</version>
+        </dependency>
+        <!--
+            P1-5：MCP 工具层协议化。使用与 Spring AI BOM 完全同版本的官方 WebMvc starter
+            （1.0.0 的 spring-ai-mcp 桥只依赖 MCP Java SDK 0.10.0 + spring-ai-model，
+            不绑定 spring-boot-starter 大版本，因此无需把 Boot 3.2.0 升级到 3.4.5）。
+            默认 SSE transport：/sse + /mcp/message，已在 SaTokenConfig 白名单放行。
+        -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+            <version>${spring-ai.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+                <configuration>
+                    <mainClass>com.health.web.HealthApplication</mainClass>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--
+                P2 / Round 6：变异测试（只量化"断言强度"，不参与 CI 门禁）。
+                跑法：mvn -o -pl health-admin org.pitest:pitest-maven:mutationCoverage
+                关注包：安全与治理关键路径（护栏、能力策略、工具守卫）。
+                junit5 插件必须挂在 plugin 依赖里，否则 CLI 调用会报
+                "Pitest could not run any tests"（1.15.8 + JUnit5 的已知坑）。
+            -->
+            <plugin>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-maven</artifactId>
+                <version>1.15.8</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-junit5-plugin</artifactId>
+                        <version>1.2.1</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.junit.platform</groupId>
+                        <artifactId>junit-platform-launcher</artifactId>
+                        <version>1.10.1</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <targetClasses>
+                        <param>com.health.web.assistant.advisor.InputGuardrailAdvice</param>
+                        <param>com.health.web.assistant.tool.ToolAccessPolicy</param>
+                        <param>com.health.web.assistant.tool.ToolAccessGuard</param>
+                        <param>com.health.web.assistant.agent.SymptomStateMachine</param>
+                    </targetClasses>
+                    <targetTests>
+                        <param>com.health.web.assistant.advisor.*Test</param>
+                        <param>com.health.web.assistant.tool.ToolAccess*Test</param>
+                        <param>com.health.web.assistant.agent.Symptom*Test</param>
+                        <param>com.health.web.assistant.contract.*Test</param>
+                    </targetTests>
+                    <outputFormats>
+                        <param>XML</param>
+                        <param>HTML</param>
+                    </outputFormats>
+                    <timestampedReports>false</timestampedReports>
+                    <failWhenNoMutations>false</failWhenNoMutations>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

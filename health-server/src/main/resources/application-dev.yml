@@ -1,0 +1,23 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  datasource:
+    url: jdbc:mysql://localhost:3307/health_management?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    username: root
+    password: root123
+
+app:
+  jwt:
+    secret: dev-jwt-secret-key-for-local-development-min-256-bits
+
+logging:
+  level:
+    com.chuanzhi.health: DEBUG
+    org.springframework.security: DEBUG
+
+ai:
+  api-key: sk-dcaf79d238e945c58cee576072298922
+  model: deepseek-chat
+  base-url: https://api.deepseek.com/v1

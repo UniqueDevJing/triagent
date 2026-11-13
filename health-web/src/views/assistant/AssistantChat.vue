@@ -1,0 +1,878 @@
+<template>
+  <div class="triage-wrap">
+    <!-- 主对话区 -->
+    <div class="chat-col">
+      <div class="triage-header">
+        <div class="hd-left">
+          <div class="logo">⚕️</div>
+          <div>
+            <h2>智能分诊 · 就医助手</h2>
+            <p class="hd-sub">多 Agent 协作 · 意图连贯 · 透明推理 · 知识溯源</p>
+          </div>
+        </div>
+        <div class="hd-right">
+          <button class="theme-btn" :title="isDark ? '切换到亮色' : '切换到暗色'" @click="toggleTheme">
+            {{ isDark ? '☀️' : '🌙' }}
+          </button>
+          <el-tag v-if="agentLabel" size="small" round effect="light" :type="agentTagType(agentLabel)">
+            <span v-if="busy" class="pulse">●</span> {{ agentLabel }}
+          </el-tag>
+          <span v-else class="idle-tag">等待输入</span>
+        </div>
+      </div>
+
+      <!-- 对话流 -->
+      <div class="msg-list-wrap"><div ref="scrollRef" class="msg-list" @scroll="onScroll">
+        <div v-if="messages.length === 0" class="empty">
+          <div class="empty-icon">🩺</div>
+          <p>描述你的不适或需求，例如：</p>
+          <div class="quick-chips">
+            <span v-for="q in quick" :key="q.text" class="chip" @click="send(q.text)">{{ q.label }}</span>
+          </div>
+          <p class="empty-tip">分诊咨询、体检报告解读、门诊预约，一个入口全部完成</p>
+        </div>
+
+        <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
+          <div class="avatar" :class="m.role">{{ m.role === 'user' ? '🧑' : '🤖' }}</div>
+          <div class="bubble" :class="{ error: m.error }">
+            <template v-if="m.role === 'user'">{{ m.text }}</template>
+            <template v-else>
+              <div class="m-meta" v-if="m.agent || m.streaming">
+                <span class="m-agent">{{ m.agent || '正在思考…' }}</span>
+                <span v-if="m.triage" class="m-urgency" :class="(m.triage.urgency || '').toLowerCase()">
+                  {{ urgencyText(m.triage.urgency) }}
+                </span>
+                <span
+                  v-if="!m.streaming && m.text"
+                  class="copy-btn"
+                  @click="copyAnswer(m)"
+                >{{ m.copied ? '已复制' : '复制' }}</span>
+              </div>
+
+              <div class="answer" v-html="renderMd(m.text)"></div>
+
+              <!-- 推理过程（编排决策 + 工具调用）：流式时展开，完成后自动收起，可随时点开回看 -->
+              <div v-if="(m.plans && m.plans.length) || (m.tools && m.tools.length)" class="proc">
+                <button type="button" class="proc-toggle" @click="m.processOpen = !m.processOpen">
+                  <span class="proc-arrow" :class="{ open: m.processOpen }">▸</span>
+                  推理过程（{{ (m.plans ? m.plans.length : 0) + (m.tools ? m.tools.length : 0) }} 步）
+                </button>
+                <div v-show="m.processOpen" class="proc-body">
+                  <div v-if="m.plans && m.plans.length" class="plan-block">
+                    <div class="sec-label">🧭 编排决策（Supervisor）</div>
+                    <div v-for="(p, j) in m.plans" :key="j" class="plan-row">
+                      <span class="plan-chip">{{ planLabel(p.decision) }}</span>
+                      <span class="plan-reason">{{ p.reason }}</span>
+                    </div>
+                  </div>
+                  <div v-if="m.tools && m.tools.length" class="tools">
+                    <div class="sec-label">🔧 工具过程</div>
+                    <div v-for="(t, j) in m.tools" :key="j" class="tool-row">
+                      <span class="tool-name">{{ t.name }}</span>
+                      <span v-if="t.args" class="tool-args">{{ t.args }}</span>
+                      <span v-if="t.result" class="tool-result">{{ t.result }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 两步确认第二步：待确认预订单卡片。
+                   后端 createPreOrder 的 tool_result 现在结构化下发 orderId/status，
+                   此前只有纯文本摘要，confirmPreOrder 接口一直是死代码、两步确认断在第二步。 -->
+              <div v-if="m.pendingOrder" class="pending-order">
+                <div class="sec-label">🗓️ 待确认预约（第二步）</div>
+                <div class="po-meta">
+                  #{{ m.pendingOrder.orderId }} · {{ m.pendingOrder.department }} · {{ m.pendingOrder.date }}
+                </div>
+                <button
+                  class="po-btn"
+                  :disabled="m.pendingOrder.confirming || m.pendingOrder.confirmed"
+                  @click="confirmOrder(m)"
+                >
+                  {{ m.pendingOrder.confirmed ? '✓ 已确认' : (m.pendingOrder.confirming ? '确认中…' : '确认预约') }}
+                </button>
+                <div v-if="m.pendingOrder.confirmed" class="po-done">预约已确认，请按时到院</div>
+              </div>
+
+              <!-- 澄清追问 + 快捷回复 -->
+              <div v-if="m.clarify" class="clarify">
+                <div class="sec-label">✍️ 需要你补充</div>
+                <div class="clarify-q">{{ m.clarify.question }}</div>
+                <div class="clarify-chips">
+                  <span
+                    v-for="opt in quickAnswers(m.clarify.missing)"
+                    :key="opt"
+                    class="chip small"
+                    :class="{ disabled: busy }"
+                    @click="!busy && send(opt)"
+                  >{{ opt }}</span>
+                </div>
+              </div>
+
+              <!-- 分诊结果卡 -->
+              <div v-if="m.triage" class="triage-card" :class="m.triage.urgency.toLowerCase()">
+                <div class="tc-head">
+                  <span class="urgency" :class="m.triage.urgency.toLowerCase()">{{ urgencyText(m.triage.urgency) }}</span>
+                  <el-tag v-for="d in m.triage.departments" :key="d" size="small" effect="plain">{{ d }}</el-tag>
+                </div>
+                <div v-if="m.triage.hospitalLevel" class="tc-row"><b>建议就医：</b>{{ m.triage.hospitalLevel }}</div>
+                <div v-if="m.triage.followUp && m.triage.followUp.length" class="tc-row">
+                  <b>下一步：</b>
+                  <ul><li v-for="(f, k) in m.triage.followUp" :key="k">{{ f }}</li></ul>
+                </div>
+                <!-- 置信度光谱：低/中/高三段 + 游标，低于 60% 自动给人工复核提示 -->
+                <div v-if="m.triage.confidence != null" class="tc-row conf">
+                  <b>置信度：</b>
+                  <span class="conf-spectrum" role="img" :aria-label="'置信度 ' + Math.round(m.triage.confidence * 100) + '%'">
+                    <i class="seg low"></i><i class="seg mid"></i><i class="seg high"></i>
+                    <b class="conf-marker" :style="{ left: Math.min(96, Math.max(2, Math.round(m.triage.confidence * 100))) + '%' }"></b>
+                  </span>
+                  <b class="conf-val">{{ Math.round(m.triage.confidence * 100) }}%</b>
+                </div>
+                <div v-if="m.triage.confidence != null && m.triage.confidence < 0.6" class="tc-escalate">
+                  ⚠️ 置信度偏低：本建议仅供参考，建议线下就医或转人工复核
+                </div>
+                <!-- 建议采纳/否决：人机协同留痕 -->
+                <div class="tc-feedback">
+                  <template v-if="!m.feedback">
+                    <button class="fb-btn ok" :disabled="m.streaming" @click="markFeedback(m, true)">👍 采纳</button>
+                    <button class="fb-btn no" :disabled="m.streaming" @click="markFeedback(m, false)">👎 不准确</button>
+                  </template>
+                  <span v-else class="fb-log" :class="m.feedback">
+                    {{ m.feedback === 'accepted' ? '✓ 已采纳' : '✗ 已标记不准确' }} · {{ m.feedbackAt }}
+                  </span>
+                </div>
+                <div v-if="m.triage.disclaimer" class="tc-disclaimer">⚠️ {{ m.triage.disclaimer }}</div>
+              </div>
+
+              <!-- 知识来源 -->
+              <div v-if="m.sources && m.sources.length" class="sources">
+                <el-collapse>
+                  <el-collapse-item :title="'📚 知识来源（' + m.sources.length + '）'">
+                    <div v-for="(s, k) in m.sources" :key="k" class="src-row">
+                      [{{ s.source }} #{{ s.refId }}] {{ s.title }}
+                      <span class="score">{{ s.score }}</span>
+                    </div>
+                  </el-collapse-item>
+                </el-collapse>
+              </div>
+
+              <span v-if="m.streaming" class="caret">▌</span>
+            </template>
+          </div>
+        </div>
+      </div>
+        <button v-show="showJump" class="jump-bottom" @click="jumpBottom">↓ 回到底部</button>
+      </div>
+
+      <!-- 输入区 -->
+      <div class="input-bar">
+        <el-input
+          v-model="input"
+          type="textarea"
+          :rows="2"
+          resize="none"
+          placeholder="输入你的症状 / 需求，例如：帮孙明伟约呼吸内科…"
+          @keydown.enter.exact.prevent="!busy && send()"
+        />
+        <div class="send-col">
+          <el-button v-if="busy" plain type="warning" @click="stopStream">停止</el-button>
+          <el-button type="primary" :loading="busy" @click="send()">发送</el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 会话信息栏 -->
+    <aside class="info-col">
+      <div class="panel">
+        <div class="panel-title">会话上下文</div>
+        <div class="kv">
+          <span class="k">当前 Agent</span>
+          <span class="v" :class="{ muted: !agentLabel }">{{ agentLabel || '—' }}</span>
+        </div>
+        <div class="kv">
+          <span class="k">澄清进度</span>
+          <span class="v chips-inline">
+            <el-tag v-for="f in fieldKeys" :key="f" size="small" :type="fieldsProgress[f] === 'done' ? 'success' : 'info'" effect="light" round>
+              {{ f === 'done' ? '✓' : '·' }} {{ fieldLabel(f) }}
+            </el-tag>
+          </span>
+        </div>
+        <el-divider />
+        <div class="panel-sub">快捷开始</div>
+        <div class="rail-links">
+          <span v-for="q in quick" :key="q.text" class="rail-link" :class="{ off: busy }" @click="!busy && send(q.text)">{{ q.label }}</span>
+        </div>
+        <!-- 身体区域可视化输入：部位 → 示例主诉，点击即发送 -->
+        <el-divider />
+        <div class="body-map">
+          <div class="bm-title">身体区域快速描述</div>
+          <div class="bm-grid">
+            <button v-for="b in bodyRegions" :key="b.part" class="bm-node" :class="{ off: busy }" :title="b.tip" @click="!busy && send(b.text)">
+              <span class="bm-ico">{{ b.ico }}</span>{{ b.part }}
+            </button>
+          </div>
+        </div>
+        <el-divider />
+        <div class="rail-tip">
+          <p>· 同一会话内意图保持连贯：预约管家收主诉时，描述症状不会被误判为急诊求助。</p>
+          <p>· 说「取消 / 算了」可退出当前流程；说「预约 / 解读报告」会切换 Agent。</p>
+        </div>
+        <el-button class="clear-btn" size="small" plain @click="resetSession">清空会话</el-button>
+      </div>
+
+      <!-- 推理轨迹（Reasoning Trail）：Supervisor 编排决策 + 工具调用的全程留痕，医疗可解释三要素之一 -->
+      <div class="panel trail">
+        <div class="panel-title">推理轨迹（Reasoning Trail）</div>
+        <div v-if="!trail.length" class="trail-empty">
+          开始对话后，这里会实时记录 Supervisor 的每次编排决策与每一次工具调用，全程可回溯。
+        </div>
+        <ol v-else class="trail-list">
+          <li v-for="(t, i) in trail" :key="i" :class="t.kind">
+            <span class="trail-dot"></span>
+            <div class="trail-body">
+              <span class="trail-kind">{{ t.kind === 'plan' ? '🧭 ' + planLabel(t.decision) : '🔧 ' + t.name }}</span>
+              <span v-if="t.text" class="trail-text">{{ t.text }}</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </aside>
+  </div>
+</template>
+
+<script setup>
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { chatStream, confirmPreOrder } from '@/api/modules/assistant'
+
+const input = ref('')
+const busy = ref(false)
+const agentLabel = ref('')
+const messages = ref([])
+const abortRef = ref(null)
+
+/* ------------------------- 暗/亮主题（医疗级双主题） ------------------------- */
+const isDark = ref(document.documentElement.classList.contains('dark'))
+function toggleTheme() {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+  try { localStorage.setItem('triage-theme', isDark.value ? 'dark' : 'light') } catch (e) { /* ignore */ }
+}
+
+/* ------------------- 推理轨迹：跨消息聚合编排决策与工具调用 ------------------- */
+const trail = computed(() => {
+  const out = []
+  for (const m of messages.value) {
+    for (const p of m.plans || []) out.push({ kind: 'plan', decision: p.decision, text: p.reason })
+    for (const t of m.tools || []) out.push({ kind: 'tool', name: t.name, text: t.result || t.args || '' })
+  }
+  return out.slice(-30)
+})
+
+/* --------------------- 分诊建议采纳/否决：人机协同留痕 --------------------- */
+function markFeedback(m, accepted) {
+  m.feedback = accepted ? 'accepted' : 'rejected'
+  m.feedbackAt = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+}
+
+/* 身体区域可视化输入：部位 → 示例主诉，点击即发送 */
+const bodyRegions = [
+  { part: '头部', ico: '🧠', tip: '头痛/头晕', text: '我头痛，持续3天，有点恶心' },
+  { part: '胸部', ico: '🫀', tip: '胸痛/心悸', text: '我胸痛还呼吸困难，持续半小时了' },
+  { part: '腹部', ico: '🩹', tip: '腹痛/腹胀', text: '我腹痛两小时，一阵一阵的' },
+  { part: '咽喉', ico: '😷', tip: '咽痛/咳嗽', text: '我咽喉痛还咳嗽，吞咽困难' },
+  { part: '关节', ico: '🦵', tip: '关节痛', text: '我膝关节疼痛一周，上下楼明显' },
+  { part: '腰背', ico: '🧍', tip: '腰背酸痛', text: '我腰背酸痛，久坐加重' },
+]
+
+function stopStream() {
+  if (abortRef.value) abortRef.value.abort()
+}
+
+// 两步确认第二步：确认预订单。此前后端端点已存在、前端接口函数已定义，但从未被调用。
+async function confirmOrder(m) {
+  const po = m.pendingOrder
+  if (!po || po.confirming || po.confirmed) return
+  po.confirming = true
+  try {
+    await confirmPreOrder(po.orderId)
+    po.confirmed = true
+    po.confirming = false
+    m.text += '\n\n✅ 预订单 #' + po.orderId + ' 已确认，请按时到院。'
+  } catch (e) {
+    po.confirming = false
+  }
+  scrollBottom()
+}
+const scrollRef = ref(null)
+const showJump = ref(false)
+let stickToBottom = true
+
+// 用户上滑阅读历史时暂停自动跟随；贴底时恢复
+function onScroll() {
+  const node = scrollRef.value
+  if (!node) return
+  const distance = node.scrollHeight - node.scrollTop - node.clientHeight
+  stickToBottom = distance < 120
+  showJump.value = distance >= 200
+}
+
+function jumpBottom() {
+  const node = scrollRef.value
+  if (!node) return
+  stickToBottom = true
+  showJump.value = false
+  node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' })
+}
+
+let sessionId = 'triage-' + Date.now().toString(36)
+
+const quick = [
+  { label: '🤔 最近不太舒服', text: '我最近不太舒服' },
+  { label: '🫀 胸痛伴呼吸困难', text: '我胸痛还呼吸困难，持续半小时了' },
+  { label: '🤕 头痛三天伴恶心', text: '左边头痛，持续3天，有点恶心，没有发烧' },
+  { label: '📑 解读体检报告', text: '解读会员孙明伟的体检报告，告诉我风险等级和后续建议' },
+  { label: '📅 预约门诊', text: '帮我给会员孙明伟预约呼吸内科的号' },
+]
+
+const fieldKeys = ['bodyPart', 'duration', 'accompany']
+const fieldsProgress = ref({ bodyPart: 'wait', duration: 'wait', accompany: 'wait' })
+let previousMissing = []
+
+const fieldLabel = (f) => ({ bodyPart: '部位', duration: '时长', accompany: '伴随' }[f] || f)
+const urgencyText = (u) =>
+  ({ EMERGENCY: '🚨 需立即急诊', URGENT: '⚠️ 尽快就诊', ROUTINE: '💚 普通门诊' }[u] || u || '')
+const agentTagType = (name) =>
+  (name || '').includes('预约') ? 'success' : (name || '').includes('解读') || (name || '').includes('报告') ? 'warning' : 'primary'
+
+const planLabel = (decision) =>
+  ({ TRIAGE_FIRST: '应急分诊优先', SAFETY_BLOCK: '安全拦截预约', RESUME: '恢复预约' }[decision] || decision)
+
+const answerMap = {
+  bodyPart: ['头痛', '胸痛', '腹痛', '关节痛', '咳嗽'],
+  duration: ['2天', '一周', '一个月', '反复好几年'],
+  accompany: ['有发热', '有点恶心', '没有其他症状'],
+  default: ['持续3天', '有点恶心，没有发烧'],
+}
+function quickAnswers(missing) {
+  if (!missing || !missing.length) return []
+  const set = new Set()
+  for (const f of missing) (answerMap[f] || answerMap.default).forEach((x) => set.add(x))
+  return Array.from(set)
+}
+
+// 轻量 markdown：先整体转义再解析有限语法（粗体/行内码/无序列表/小标题），保证无 XSS
+function renderMd(t) {
+  if (!t) return ''
+  const esc = String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const out = []
+  let inList = false
+  for (const line of esc.split('\n')) {
+    let l = line
+      .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+      .replace(/`([^`]+)`/g, '<code class="md-ic">$1</code>')
+    const li = l.match(/^\s*[-*•]\s+(.*)$/)
+    if (li) {
+      if (!inList) { out.push('<ul class="md-ul">'); inList = true }
+      out.push('<li>' + li[1] + '</li>')
+      continue
+    }
+    if (inList) { out.push('</ul>'); inList = false }
+    const h = l.match(/^###?\s+(.*)$/)
+    if (h) { out.push('<div class="md-h">' + h[1] + '</div>'); continue }
+    out.push(l === '' ? '<div class="md-gap"></div>' : '<div>' + l + '</div>')
+  }
+  if (inList) out.push('</ul>')
+  return out.join('')
+}
+
+function scrollBottom() {
+  if (!stickToBottom) return
+  nextTick(() => {
+    if (scrollRef.value) scrollRef.value.scrollTop = scrollRef.value.scrollHeight
+  })
+}
+
+async function copyAnswer(m) {
+  try {
+    await navigator.clipboard.writeText(m.text)
+    m.copied = true
+    setTimeout(() => { m.copied = false }, 1500)
+  } catch (e) { /* 剪贴板不可用时静默 */ }
+}
+
+function resetSession() {
+  sessionId = 'triage-' + Date.now().toString(36)
+  messages.value = []
+  agentLabel.value = ''
+  fieldsProgress.value = { bodyPart: 'wait', duration: 'wait', accompany: 'wait' }
+  previousMissing = []
+}
+
+async function send(text) {
+  const content = (text ?? input.value).trim()
+  if (!content || busy.value) return
+  input.value = ''
+  busy.value = true
+  const ctrl = new AbortController()
+  abortRef.value = ctrl
+
+  messages.value.push({ role: 'user', text: content })
+  const bot = reactive({ role: 'assistant', text: '', tools: [], plans: [], streaming: true, error: false, processOpen: true })
+  messages.value.push(bot)
+  scrollBottom()
+
+  try {
+    await chatStream(sessionId, content, {
+      token(d) {
+        bot.text += d
+        scrollBottom()
+      },
+      tool_call(d) {
+        bot.tools.push({ name: d.name, args: d.arguments, result: '' })
+        scrollBottom()
+      },
+      plan(d) {
+        bot.plans.push(d)
+        scrollBottom()
+      },
+      tool_result(d) {
+        const t = bot.tools.find((x) => x.name === d.name && !x.result)
+        const apply = (text) => {
+          if (t) t.result = text
+          else bot.tools.push({ name: d.name, args: '', result: text })
+        }
+        // createPreOrder 的结果是结构化 JSON（orderId/status/department/date）
+        if (d.name === 'createPreOrder') {
+          try {
+            const o = JSON.parse(d.result)
+            if (o && o.orderId) {
+              apply(o.summary || '已生成预订单')
+              bot.pendingOrder = {
+                orderId: o.orderId, status: o.status,
+                department: o.department, date: o.date,
+                confirming: false, confirmed: false,
+              }
+              scrollBottom()
+              return
+            }
+          } catch (e) { /* 非结构化（如日期格式错误提示），按纯文本落回工具行 */ }
+        }
+        apply(d.result)
+        scrollBottom()
+      },
+      clarify(d) {
+        bot.clarify = d
+        if (!bot.text) bot.text = ''
+        agentLabel.value = '分诊顾问'
+        bot.agent = '分诊顾问 · 追问'
+        // 进度推进：上轮缺失但本轮不再追问 → 视为已采集
+        const current = d.missing || []
+        for (const f of previousMissing) {
+          if (!current.includes(f) && fieldsProgress.value[f] === 'wait') fieldsProgress.value[f] = 'done'
+        }
+        previousMissing = current
+        scrollBottom()
+      },
+      done(d) {
+        const dupClarify = bot.clarify && d.answer === bot.clarify.question
+        if (d.answer && d.answer !== bot.text && !dupClarify) bot.text = d.answer
+        bot.triage = d.triage || null
+        bot.sources = d.sources || []
+        agentLabel.value = d.agent || agentLabel.value
+        bot.agent = d.agent || bot.agent
+        bot.streaming = false
+        // 无进一步追问 → 补齐字段进度展示为已采集（结合状态机语义的近似）
+        if (!bot.clarify && previousMissing.length) {
+          for (const f of previousMissing) fieldsProgress.value[f] = 'done'
+          previousMissing = []
+        }
+        bot.processOpen = false // 完成后自动收起推理过程，答案回到视野中心
+        scrollBottom()
+      },
+      error(d) {
+        bot.text = (bot.text ? bot.text + '\n' : '') + '⚠️ ' + (d.message || '服务异常')
+        bot.streaming = false
+        bot.error = true
+        scrollBottom()
+      },
+    }, ctrl.signal)
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      bot.text += (bot.text ? '\n\n' : '') + '⏹ 已手动停止本次生成'
+      bot.streaming = false
+    } else {
+      bot.text = '⚠️ 连接失败：' + (e.message || e)
+      bot.streaming = false
+      bot.error = true
+    }
+    scrollBottom()
+  } finally {
+    abortRef.value = null
+    busy.value = false
+  }
+}
+</script>
+
+<style scoped>
+.triage-wrap {
+  display: flex;
+  gap: 14px;
+  height: calc(100vh - 60px);
+  padding: 14px 18px;
+  box-sizing: border-box;
+}
+.chat-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background:
+    radial-gradient(1100px 380px at 88% -8%, rgba(91, 141, 239, 0.10), transparent 60%),
+    radial-gradient(800px 320px at -8% 108%, rgba(122, 91, 216, 0.08), transparent 55%),
+    #ffffff;
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.triage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hd-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.logo {
+  width: 46px; height: 46px; border-radius: 14px; font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #5b8def, #7a5bd8); color: #fff;
+  box-shadow: 0 6px 16px rgba(91, 141, 239, 0.3);
+}
+.triage-header h2 { margin: 0; font-size: 18px; color: #2c3e50; }
+.hd-sub { margin: 2px 0 0; font-size: 12px; color: #8a94a6; }
+.hd-right { display: flex; align-items: center; }
+.pulse { animation: pulse 1s infinite; margin-right: 4px; }
+@keyframes pulse { 50% { opacity: 0.2; } }
+.idle-tag { font-size: 12px; color: #a8b0bd; background: #f3f5f9; padding: 4px 12px; border-radius: 999px; }
+
+.msg-list {
+  flex: 1;
+  overflow-y: auto;
+  background: #f5f7fb;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scroll-behavior: smooth;
+}
+.msg-list::-webkit-scrollbar { width: 6px; }
+
+.empty { text-align: center; padding-top: 44px; color: #7d8aa0; }
+.empty-icon {
+  display: inline-flex; width: 76px; height: 76px;
+  align-items: center; justify-content: center;
+  border-radius: 24px; font-size: 36px;
+  background: linear-gradient(135deg, rgba(91,141,239,0.12), rgba(122,91,216,0.12));
+  animation: floaty 3s ease-in-out infinite;
+}
+@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.empty-tip { font-size: 12px; margin-top: 10px; opacity: 0.7; }
+
+.quick-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
+.chip {
+  padding: 5px 12px; border-radius: 999px; cursor: pointer; font-size: 13px;
+  background: #fff; border: 1px solid #dbe3f2; color: #3d5a99; transition: all 0.2s ease;
+  user-select: none;
+}
+.chip:hover { border-color: #5b8def; color: #5b8def; transform: translateY(-1px); }
+.chip.small { font-size: 12px; padding: 3px 10px; }
+.chip.disabled { opacity: 0.6; cursor: not-allowed; }
+
+.msg { display: flex; gap: 10px; align-items: flex-start; animation: bubbleIn 0.28s ease both; }
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+.avatar {
+  flex: 0 0 34px; width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-size: 16px; background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.avatar.user { background: linear-gradient(135deg, #e8efff, #efe9ff); }
+.bubble {
+  max-width: 78%;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+.msg.user { flex-direction: row-reverse; }
+.msg.user .bubble {
+  background: linear-gradient(135deg, #5b8def, #7a5bd8); color: #fff;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 6px 16px rgba(91, 141, 239, 0.25);
+}
+.msg.assistant .bubble {
+  background: #fff; border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.bubble.error .answer { color: #c45656; }
+
+.m-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; }
+.m-agent { color: #7d8aa0; background: #f0f4fc; padding: 2px 8px; border-radius: 999px; }
+.m-urgency { font-weight: 600; }
+.m-urgency.emergency { color: #e0533d; }
+.m-urgency.urgent { color: #d98c1b; }
+.m-urgency.routine { color: #4fae2f; }
+.caret { color: #5b8def; animation: blink 1s infinite; margin-left: 2px; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.sec-label { font-size: 11px; color: #98a2b3; margin: 10px 0 6px; letter-spacing: 0.5px; }
+.plan-block { display: flex; flex-direction: column; gap: 6px; }
+.plan-row {
+  display: flex; align-items: center; gap: 8px; font-size: 12px;
+  background: #f6f3ff; border: 1px solid #e9e0fb; border-left: 3px solid #7a5bd8;
+  border-radius: 8px; padding: 6px 10px;
+}
+.plan-chip {
+  flex: 0 0 auto;
+  color: #6a42c8; background: #efe7ff; font-weight: 600;
+  padding: 2px 8px; border-radius: 999px; font-size: 11px;
+}
+.plan-reason { color: #6b5a8f; }
+.pending-order {
+  margin-top: 4px;
+  padding: 10px 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+}
+.pending-order .po-meta { font-size: 13px; color: #7c2d12; margin: 4px 0 8px; }
+.pending-order .po-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #ea580c;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pending-order .po-btn:disabled { opacity: 0.55; cursor: default; }
+.pending-order .po-done { margin-top: 6px; font-size: 12.5px; color: #16a34a; }
+
+.tools { display: flex; flex-direction: column; gap: 6px; }
+.tool-row {
+  display: flex; flex-direction: column; gap: 2px; font-size: 12px;
+  background: #f4f7fd; border: 1px solid #e4eaf6; border-radius: 8px; padding: 6px 10px;
+  transition: background 0.2s ease;
+}
+.tool-row:hover { background: #edf3fd; }
+.tool-name { color: #4a6bcf; font-weight: 600; }
+.tool-args { color: #6b7688; }
+.tool-result { color: #2f9e63; }
+
+.clarify { margin-top: 4px; }
+.clarify-q { font-weight: 500; }
+.clarify-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+.triage-card {
+  margin-top: 10px; border-radius: 12px; padding: 10px 12px;
+  border-left: 4px solid #999; background: #fafbfd; font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.triage-card.emergency { border-left-color: #e0533d; background: #fdf1ef; }
+.triage-card.urgent { border-left-color: #e6a23c; background: #fdf7ec; }
+.triage-card.routine { border-left-color: #67c23a; background: #f2faf0; }
+.tc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.urgency { font-weight: 700; }
+.urgency.emergency { color: #e0533d; }
+.urgency.urgent { color: #d98c1b; }
+.urgency.routine { color: #4fae2f; }
+.tc-row { margin-top: 6px; }
+.tc-row ul { margin: 4px 0 0 18px; padding: 0; }
+.tc-disclaimer { margin-top: 8px; font-size: 12px; color: #a97474; }
+
+.sources { margin-top: 8px; }
+.src-row { font-size: 12px; padding: 2px 0; }
+.score { color: #999; margin-left: 6px; }
+
+.input-bar { display: flex; gap: 10px; align-items: flex-end; }
+.send-col { flex: 0 0 auto; }
+.input-bar :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+  transition: box-shadow 0.25s ease, background 0.25s ease;
+}
+.input-bar :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #5b8def inset, 0 2px 10px rgba(91,141,239,0.12);
+}
+
+/* 右侧信息栏 */
+.info-col { flex: 0 0 292px; display: flex; }
+.panel {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+.panel-title { font-weight: 700; color: #2c3e50; display: flex; align-items: center; gap: 6px; }
+.panel-title::before { content: ''; width: 4px; height: 14px; border-radius: 2px; background: linear-gradient(180deg, #5b8def, #7a5bd8); }
+.kv { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.k { color: #8a94a6; }
+.v { color: #33415c; font-weight: 500; text-align: right; }
+.v.muted { color: #a8b0bd; font-weight: 400; }
+.chips-inline { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.panel-sub { font-size: 12px; color: #8a94a6; }
+.rail-links { display: flex; flex-direction: column; gap: 6px; }
+.rail-link {
+  font-size: 13px; color: #3d5a99; background: #f4f7fd;
+  border-radius: 8px; padding: 7px 10px; cursor: pointer;
+  border: 1px solid transparent; transition: all 0.2s ease; user-select: none;
+}
+.rail-link:hover { border-color: #5b8def; background: #eef4ff; }
+.rail-link.off { opacity: 0.6; cursor: not-allowed; }
+.rail-tip p { margin: 0 0 6px; color: #7d8aa0; font-size: 12px; line-height: 1.6; }
+.clear-btn { margin-top: auto; align-self: flex-start; }
+
+@media (max-width: 1080px) {
+  .info-col { display: none; }
+  .bubble { max-width: 88%; }
+}
+
+/* ───── UX 迭代：智能滚动 / 推理过程折叠 / markdown / 复制 / 停止 ───── */
+.msg-list-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.jump-bottom {
+  position: absolute; right: 14px; bottom: 12px; z-index: 3;
+  padding: 5px 12px; border: 1px solid #dbe3f2; border-radius: 999px;
+  background: #fff; color: #3d5a99; font-size: 12px; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); transition: all 0.2s ease;
+}
+.jump-bottom:hover { border-color: #5b8def; color: #5b8def; }
+
+.proc { margin-top: 8px; }
+.proc-toggle {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border: 1px dashed #d8dfeb; border-radius: 999px;
+  background: #f6f8fc; color: #7d8aa0; font-size: 11.5px; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.proc-toggle:hover { color: #4a6bcf; border-color: #b9c9ee; }
+.proc-arrow { display: inline-block; transition: transform 0.18s ease; }
+.proc-arrow.open { transform: rotate(90deg); }
+.proc-body { margin-top: 6px; }
+
+.copy-btn {
+  margin-left: auto; color: #7d8aa0; font-size: 11px; cursor: pointer;
+  padding: 2px 8px; border-radius: 999px; background: #f0f4fc;
+  transition: all 0.2s ease; user-select: none;
+}
+.copy-btn:hover { color: #5b8def; background: #e8f0ff; }
+
+.md-ul { margin: 4px 0 4px 18px; padding: 0; }
+.md-h { font-weight: 700; margin-top: 6px; }
+.md-ic {
+  font-family: Consolas, Menlo, monospace; font-size: 12.5px;
+  background: #f0f4fc; border-radius: 4px; padding: 1px 5px; color: #4a6bcf;
+}
+.md-gap { height: 6px; }
+
+/* ------------------------------ 主题切换按钮 ------------------------------ */
+.theme-btn {
+  width: 32px; height: 32px; margin-right: 8px; border-radius: 10px; font-size: 14px;
+  border: 1px solid #d6e3f0; background: #fff; cursor: pointer;
+  transition: all .2s ease; display: inline-flex; align-items: center; justify-content: center;
+}
+.theme-btn:hover { border-color: var(--primary-light, #7BA8F7); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+/* 置信度光谱：三段色带 + 游标（低/中/高），比单条进度条更能表达"不确定性是光谱" */
+.conf-spectrum { position: relative; flex: 1; min-width: 110px; height: 9px; border-radius: 999px; overflow: visible; display: flex; }
+.conf-spectrum .seg { height: 100%; }
+.conf-spectrum .seg.low { width: 40%; border-radius: 999px 0 0 999px; background: linear-gradient(90deg, #fca5a5, #f87171); }
+.conf-spectrum .seg.mid { width: 35%; background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+.conf-spectrum .seg.high { width: 25%; border-radius: 0 999px 999px 0; background: linear-gradient(90deg, #34d399, #10b981); }
+.conf-spectrum .conf-marker {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 15px; height: 15px; border-radius: 50%;
+  background: #fff; border: 3px solid #2563eb;
+  box-shadow: 0 1px 6px rgba(37, 99, 235, 0.45);
+}
+.conf-val { font-size: 12px; min-width: 34px; text-align: right; }
+
+/* 低置信度自动升级提示（医疗安全：宁可多提示，不粉饰不确定性） */
+.tc-escalate {
+  margin-top: 8px; padding: 8px 11px; font-size: 12.5px; line-height: 1.5;
+  border-radius: 10px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a;
+}
+
+/* 建议采纳/否决：人机协同留痕 */
+.tc-feedback { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+.fb-btn { padding: 5px 14px; font-size: 12.5px; border-radius: 999px; cursor: pointer; transition: all .15s ease; }
+.fb-btn.ok { border: 1px solid #bbf7d0; background: #f0fdf4; color: #15803d; }
+.fb-btn.ok:hover:not(:disabled) { background: #dcfce7; }
+.fb-btn.no { border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; }
+.fb-btn.no:hover:not(:disabled) { background: #fee2e2; }
+.fb-btn:disabled { opacity: .5; cursor: not-allowed; }
+.fb-log { font-size: 12px; padding: 4px 12px; border-radius: 999px; }
+.fb-log.accepted { color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; }
+.fb-log.rejected { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; }
+
+/* ------------------------- 推理轨迹（Reasoning Trail） ------------------------- */
+.panel.trail { min-height: 120px; }
+.trail-empty { font-size: 12px; color: #909399; line-height: 1.6; }
+.trail-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+.trail-list li { position: relative; display: flex; gap: 9px; padding-left: 14px; }
+.trail-dot {
+  position: absolute; left: 0; top: 5px; width: 8px; height: 8px; border-radius: 50%;
+  background: #93c5fd; box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.25);
+}
+.trail-list li.plan .trail-dot { background: var(--primary, #5B8DEF); box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.2); }
+.trail-list li.tool .trail-dot { background: #a78bfa; box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2); }
+.trail-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.trail-kind { font-size: 12px; font-weight: 600; color: #2c3e50; }
+.trail-text { font-size: 11.5px; color: #909399; line-height: 1.45; word-break: break-all; }
+
+/* ------------------------- 身体区域可视化输入 ------------------------- */
+.body-map { margin-top: 2px; }
+.bm-title { font-size: 11px; font-weight: 600; color: #909399; letter-spacing: .02em; margin-bottom: 6px; }
+.bm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.bm-node {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 7px 2px 5px; border-radius: 10px; font-size: 11px;
+  border: 1px solid #e3ecf5; background: #f8fbfe; color: #35507a; cursor: pointer;
+  transition: all .15s ease;
+}
+.bm-node:hover:not(:disabled) { border-color: #7BA8F7; background: #eef5fd; transform: translateY(-1px); }
+.bm-node.off { opacity: .55; cursor: not-allowed; }
+.bm-ico { font-size: 16px; line-height: 1; }
+
+/* ==========================================================================
+   暗色主题（html.dark）—— 医疗级夜间模式
+   浅色版式一字不改；仅在此处定点覆盖硬编码的浅色表面。
+   ========================================================================== */
+html.dark body { background: #0b1220; color: #dce4f2; }
+html.dark .theme-btn { background: #131c30; border-color: #243350; }
+html.dark .tc-escalate { color: #fcd34d; background: #2a2210; border-color: #4a3b14; }
+html.dark .fb-btn.ok { background: #10241a; border-color: #1d4632; color: #4ade80; }
+html.dark .fb-btn.no { background: #2a1414; border-color: #4c1d1d; color: #f87171; }
+html.dark .fb-log.accepted { background: #10241a; border-color: #1d4632; color: #4ade80; }
+html.dark .fb-log.rejected { background: #2a1414; border-color: #4c1d1d; color: #f87171; }
+html.dark .trail-empty, html.dark .trail-text { color: #7c8db0; }
+html.dark .trail-kind { color: #dce4f2; }
+html.dark .bm-node { background: #0e1626; border-color: #243350; color: #a8bdd9; }
+html.dark .bm-node:hover { border-color: #7BA8F7; background: #14203a; }
+html.dark .bm-title { color: #7c8db0; }
+html.dark .tc-disclaimer { color: #f0b47a; }
+html.dark .md-ic { background: #14203a; color: #8fb0e8; }
+html.dark ::-webkit-scrollbar-thumb { background: #243350; }
+</style>

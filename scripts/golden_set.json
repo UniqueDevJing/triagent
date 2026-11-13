@@ -1,0 +1,304 @@
+{
+  "version": "v3.1-30cases",
+  "cases": [
+    {
+      "id": "G1",
+      "input": "突然胸痛伴大汗、恶心，持续不缓解",
+      "expected_urgency": "EMERGENCY",
+      "expected_departments": [
+        "急诊科",
+        "心内科"
+      ],
+      "category": "心血管急症"
+    },
+    {
+      "id": "G2",
+      "input": "一侧肢体无力、口角歪斜、说话含糊",
+      "expected_urgency": "EMERGENCY",
+      "expected_departments": [
+        "急诊科",
+        "神经内科"
+      ],
+      "category": "卒中急症"
+    },
+    {
+      "id": "G3",
+      "input": "突发剧烈头痛伴喷射性呕吐",
+      "expected_urgency": "EMERGENCY",
+      "expected_departments": [
+        "急诊科",
+        "神经内科"
+      ],
+      "category": "颅高压急症"
+    },
+    {
+      "id": "G10",
+      "input": "儿童发热 39℃ 伴抽搐",
+      "expected_urgency": "EMERGENCY",
+      "expected_departments": [
+        "急诊科",
+        "神经内科"
+      ],
+      "category": "儿科急症"
+    },
+    {
+      "id": "G11",
+      "input": "突发胸闷压榨感伴大汗",
+      "expected_urgency": "EMERGENCY",
+      "expected_departments": [
+        "急诊科",
+        "心内科"
+      ],
+      "category": "心梗可疑"
+    },
+    {
+      "id": "G12",
+      "input": "溺水后被救起，昏迷不醒",
+      "expected_urgency": "EMERGENCY",
+      "expected_departments": [
+        "急诊科"
+      ],
+      "category": "意识障碍"
+    },
+    {
+      "id": "G13",
+      "input": "外伤后大量出血，面色苍白",
+      "expected_urgency": "EMERGENCY",
+      "expected_departments": [
+        "急诊科",
+        "普外科"
+      ],
+      "category": "创伤出血"
+    },
+    {
+      "id": "G14",
+      "input": "误服药物后意识模糊、言语不清",
+      "expected_urgency": "EMERGENCY",
+      "expected_departments": [
+        "急诊科",
+        "神经内科"
+      ],
+      "category": "中毒急症"
+    },
+    {
+      "id": "G15",
+      "input": "高热后抽搐不止、双眼上翻",
+      "expected_urgency": "EMERGENCY",
+      "expected_departments": [
+        "急诊科",
+        "神经内科"
+      ],
+      "category": "惊厥持续"
+    },
+    {
+      "id": "G16",
+      "input": "站立时突发晕厥倒地，刚苏醒",
+      "expected_urgency": "EMERGENCY",
+      "expected_departments": [
+        "急诊科",
+        "神经内科"
+      ],
+      "category": "晕厥急症"
+    },
+    {
+      "id": "G4",
+      "input": "呼吸困难、憋醒，下肢水肿",
+      "expected_urgency": "URGENT",
+      "expected_departments": [
+        "心内科",
+        "呼吸内科"
+      ],
+      "category": "心衰可疑"
+    },
+    {
+      "id": "G5",
+      "input": "发烧咳嗽 5 天，痰黄，胸片无异常",
+      "expected_urgency": "URGENT",
+      "expected_departments": [
+        "呼吸内科"
+      ],
+      "category": "呼吸道感染"
+    },
+    {
+      "id": "G17",
+      "input": "咳嗽咳痰两周，痰中偶有血丝",
+      "expected_urgency": "URGENT",
+      "expected_departments": [
+        "呼吸内科"
+      ],
+      "category": "咳血待查",
+      "clarify_answers": [
+        "胸部不适，咳嗽咳痰"
+      ]
+    },
+    {
+      "id": "G18",
+      "input": "尿频尿急尿痛 3 天，伴低热",
+      "expected_urgency": "URGENT",
+      "expected_departments": [
+        "泌尿外科",
+        "肾内科"
+      ],
+      "category": "泌尿感染"
+    },
+    {
+      "id": "G19",
+      "input": "右上腹绞痛 6 小时，向肩背放射",
+      "expected_urgency": "URGENT",
+      "expected_departments": [
+        "消化内科",
+        "肝胆外科"
+      ],
+      "category": "胆道绞痛"
+    },
+    {
+      "id": "G20",
+      "input": "踝关节扭伤肿胀疼痛 2 天，可勉强行走",
+      "expected_urgency": "ROUTINE",
+      "expected_departments": [
+        "骨科"
+      ],
+      "category": "运动损伤"
+    },
+    {
+      "id": "G21",
+      "input": "眼红眼痛伴视力下降 2 天",
+      "expected_urgency": "URGENT",
+      "expected_departments": [
+        "眼科"
+      ],
+      "category": "眼部急症"
+    },
+    {
+      "id": "G22",
+      "input": "便血 3 天，量少色暗红，无头晕",
+      "expected_urgency": "URGENT",
+      "expected_departments": [
+        "消化内科",
+        "肛肠外科"
+      ],
+      "category": "便血待查"
+    },
+    {
+      "id": "G23",
+      "input": "儿童咳嗽气促 2 天，精神稍差",
+      "expected_urgency": "URGENT",
+      "expected_departments": [
+        "儿科",
+        "呼吸内科"
+      ],
+      "category": "儿科呼吸"
+    },
+    {
+      "id": "G24",
+      "input": "咽痛高热 3 天，吞咽时加重",
+      "expected_urgency": "URGENT",
+      "expected_departments": [
+        "耳鼻喉科",
+        "呼吸内科"
+      ],
+      "category": "上感重症"
+    },
+    {
+      "id": "G6",
+      "input": "上腹痛烧心反复 2 个月，餐后加重",
+      "expected_urgency": "ROUTINE",
+      "expected_departments": [
+        "消化内科"
+      ],
+      "category": "胃食管反流"
+    },
+    {
+      "id": "G7",
+      "input": "膝盖下楼痛 3 周，无外伤",
+      "expected_urgency": "ROUTINE",
+      "expected_departments": [
+        "骨科",
+        "运动医学科"
+      ],
+      "category": "膝关节劳损"
+    },
+    {
+      "id": "G8",
+      "input": "手抖、心慌、消瘦、易怒 1 个月",
+      "expected_urgency": "ROUTINE",
+      "expected_departments": [
+        "内分泌科"
+      ],
+      "category": "甲亢可疑"
+    },
+    {
+      "id": "G9",
+      "input": "皮肤红斑瘙痒 1 周，无发热",
+      "expected_urgency": "ROUTINE",
+      "expected_departments": [
+        "皮肤科"
+      ],
+      "category": "皮肤病"
+    },
+    {
+      "id": "G25",
+      "input": "长期伏案后颈部酸痛 1 年",
+      "expected_urgency": "ROUTINE",
+      "expected_departments": [
+        "骨科",
+        "康复科"
+      ],
+      "category": "颈椎劳损"
+    },
+    {
+      "id": "G26",
+      "input": "近视度数加深半年，眼睛容易疲劳，想检查配镜",
+      "expected_urgency": "ROUTINE",
+      "expected_departments": [
+        "眼科"
+      ],
+      "category": "视光检查",
+      "clarify_answers": [
+        "眼睛看东西模糊，容易疲劳"
+      ]
+    },
+    {
+      "id": "G27",
+      "input": "失眠多梦 2 个月，白天精神差",
+      "expected_urgency": "ROUTINE",
+      "expected_departments": [
+        "神经内科",
+        "精神科"
+      ],
+      "category": "睡眠障碍",
+      "clarify_answers": [
+        "头晕，容易疲劳"
+      ]
+    },
+    {
+      "id": "G28",
+      "input": "体检发现幽门螺杆菌阳性 1 周，胃部偶有隐痛，食欲不振",
+      "expected_urgency": "ROUTINE",
+      "expected_departments": [
+        "消化内科"
+      ],
+      "category": "HP 阳性",
+      "clarify_answers": [
+        "胃部隐隐不适，食欲不振"
+      ]
+    },
+    {
+      "id": "G29",
+      "input": "帮我安排一次常规健康体检，无特殊不适",
+      "expect_agent": "预约管家",
+      "skip_triage": true,
+      "category": "体检预约路由"
+    },
+    {
+      "id": "G30",
+      "input": "过敏性鼻炎反复发作 2 年，流清涕打喷嚏，容易疲劳",
+      "expected_urgency": "ROUTINE",
+      "expected_departments": [
+        "耳鼻喉科",
+        "变态反应科"
+      ],
+      "category": "过敏性鼻炎"
+    }
+  ]
+}

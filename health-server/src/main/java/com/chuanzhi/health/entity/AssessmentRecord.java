@@ -1,0 +1,56 @@
+package com.chuanzhi.health.entity;
+
+import com.baomidou.mybatisplus.annotation.*;
+import com.chuanzhi.health.enums.RiskLevel;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Data
+@TableName("assessment_records")
+public class AssessmentRecord {
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    @NotNull(message = "用户ID不能为空")
+    private Long userId;
+
+    @NotNull(message = "量表ID不能为空")
+    private Long templateId;
+
+    private String answers;
+
+    private BigDecimal totalScore;
+
+    private RiskLevel riskLevel;
+
+    private String reportText;
+
+    /** 关联会员ID */
+    private Long memberId;
+
+    /** 评估人ID（admin用户） */
+    private Long assessorId;
+
+    /** 评估类型：PHYSICAL(体检), TCM(中医), PSYCHOLOGY(心理) */
+    private String type;
+
+    /** 评估结论 */
+    private String conclusion;
+
+    /** 健康建议 */
+    private String suggestion;
+
+    /** 详细评估数据（JSON） */
+    private String detailedData;
+
+    /** 评估时间 */
+    private LocalDateTime assessedAt;
+
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createdAt;
+
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updatedAt;
+}

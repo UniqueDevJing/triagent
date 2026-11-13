@@ -1,0 +1,63 @@
+# Java
+target/
+*.class
+*.jar
+*.war
+*.log
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Node
+node_modules/
+dist/
+.local/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Nginx local
+nginx-1.26.2/
+
+# Deploy build artifacts
+deploy/health-server-v3.jar
+deploy/dist/
+
+# Temp
+tmp/
+temp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 构建产物（前端 dist 由 CI/本地构建生成）
+health-web/dist/
+
+# 本地杂项
+.workbuddy/
+*.bak
+
+# 内部运维/过程文档（不公开）
+.work/
+项目优化建议报告.md
+
+# git filter-branch 残留
+.git-rewrite/

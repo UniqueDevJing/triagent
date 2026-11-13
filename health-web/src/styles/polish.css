@@ -1,0 +1,194 @@
+/* ==========================================================================
+   triagent 前端体验增强层（v2 polish）
+   --------------------------------------------------------------------------
+   Vue 3 + Element Plus。不改组件结构与业务逻辑，只做「观感与手感」的增量升级：
+   - 统一动效节奏（入场 / 悬浮 / 按压 / 焦点），操作有反馈；
+   - Element Plus 组件视觉对齐（卡片、表格、按钮、标签、对话框）；
+   - 医疗场景的克制留白与层次：信息密度高但不吵；
+   - 无障碍：可见焦点环、尊重 prefers-reduced-motion。
+   ========================================================================== */
+
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-mid: 220ms;
+  --dur-slow: 360ms;
+
+  --tg-elev-1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --tg-elev-2: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --tg-elev-3: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --tg-ring: 0 0 0 3px rgba(37, 99, 235, 0.20);
+  --tg-radius: 10px;
+}
+
+/* ---------- 滚动条 ---------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* ---------- 焦点可见（键盘用户） ---------- */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--tg-ring);
+  border-radius: 8px;
+}
+
+/* ---------- Element Plus：卡片 / 表格 / 标签 ---------- */
+.el-card {
+  border-radius: var(--tg-radius);
+  border-color: #eef2f7;
+  box-shadow: var(--tg-elev-1) !important;
+  transition:
+    box-shadow var(--dur-mid) var(--ease-out),
+    transform var(--dur-mid) var(--ease-out);
+}
+.el-card:hover {
+  box-shadow: var(--tg-elev-2) !important;
+}
+
+.el-table th.el-table__cell {
+  background: #f8fafc !important;
+  font-weight: 600;
+  color: #334155;
+}
+.el-table .el-table__row {
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.el-table .el-table__row:hover > td.el-table__cell {
+  background: #f5f8ff !important;
+}
+
+.el-tag {
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+/* ---------- 按钮：悬浮抬升 + 按压回弹 ---------- */
+.el-button {
+  border-radius: 8px;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-mid) var(--ease-out),
+    background-color var(--dur-mid) var(--ease-out),
+    border-color var(--dur-mid) var(--ease-out);
+}
+.el-button:not(.is-disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--tg-elev-1);
+}
+.el-button:not(.is-disabled):active {
+  transform: translateY(0) scale(0.985);
+  transition-duration: 60ms;
+}
+
+/* 主按钮：更饱和的蓝，hover 有轻微光晕 */
+.el-button--primary:not(.is-disabled) {
+  background-image: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-color: transparent;
+}
+.el-button--primary:not(.is-disabled):hover {
+  background-image: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.28);
+}
+
+/* ---------- 对话框 / 抽屉：入场更柔和 ---------- */
+@keyframes tg-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.el-dialog {
+  border-radius: 14px;
+  box-shadow: var(--tg-elev-3);
+  animation: tg-dialog-in var(--dur-mid) var(--ease-out) both;
+}
+
+/* ---------- 消息 / 卡片入场 ---------- */
+@keyframes tg-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.chat-message,
+.message-item,
+[class*='message'],
+[class*='card-'] {
+  animation: tg-enter var(--dur-slow) var(--ease-out) both;
+}
+
+/* ---------- 生成 / 加载中：呼吸感，避免"像卡死" ---------- */
+@keyframes tg-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.el-loading-mask,
+[class*='loading'],
+[class*='streaming'] {
+  animation: tg-breathe 1.6s ease-in-out infinite;
+}
+
+/* ---------- 输入框聚焦 ---------- */
+.el-input__wrapper,
+.el-textarea__inner {
+  transition:
+    box-shadow var(--dur-mid) var(--ease-out),
+    background-color var(--dur-mid) var(--ease-out);
+}
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus {
+  box-shadow: var(--tg-ring) !important;
+}
+
+/* ---------- 提示消息 ---------- */
+@keyframes tg-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.el-message,
+.el-notification {
+  animation: tg-drop var(--dur-mid) var(--ease-out) both;
+  border-radius: 10px;
+}
+
+/* ---------- 无障碍 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

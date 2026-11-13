@@ -1,0 +1,42 @@
+spring:
+  cache:
+    type: simple
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:health_test;MODE=MySQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: false
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    timeout: 1000ms
+
+app:
+  jwt:
+    secret: test-secret-key-for-junit-testing-2026-minimum-48-bytes
+    expiration: 3600000
+  cors:
+    allowed-origins: http://localhost:3000
+
+ai:
+  api-key: test-key
+  model: deepseek-chat
+  base-url: https://api.deepseek.com/v1
+
+mybatis-plus:
+  type-enums-package: com.chuanzhi.health.enums
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
